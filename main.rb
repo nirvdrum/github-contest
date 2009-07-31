@@ -24,6 +24,8 @@ predictings.data_items.each_with_index do |predicting, i|
 end
 predictings.data_labels << 'repo_ids'
 
+puts "Accuracy: #{data_set.class_frequency('1') * 100}%"
+
 File.open('results.txt', 'w') do |file|
   file.print DataExporter.export_data_set(predictings)
 end

@@ -146,4 +146,17 @@ class DataSetTest < Test::Unit::TestCase
     assert_equal 0.1, data_set.class_frequency('6')
   end
 
+  def test_equality
+    data_labels = ['blah', 'yo']
+
+    data_items = [
+            ['1', 'abc'],
+            ['5', 'cde']
+    ]
+
+    first_data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => data_items)
+    second_data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => data_items)
+
+    assert_equal first_data_set, second_data_set
+  end
 end

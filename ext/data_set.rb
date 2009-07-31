@@ -2,9 +2,13 @@ require 'rubygems'
 require 'ai4r'
 require 'enumerator'
 
+require '../data_set_utilities'
+
 module Ai4r
   module Data
     class DataSet
+
+      include DataSetUtilities
 
       def stratify(num_folds)
         # Sort the data items by class so we can ensure the folds match the underlying distribution.
@@ -56,6 +60,12 @@ module Ai4r
         count / data_items.size.to_f
       end
 
+      def ==(other)
+        return false if other.nil?
+
+        data_labels == other.data_labels &&
+        data_items == other.data_items    
+      end
     end
   end
 end
