@@ -25,5 +25,5 @@ end
 predictings.data_labels << 'repo_ids'
 
 File.open('results.txt', 'w') do |file|
-  file.puts DataExporter.export_data_set(predictings)
+  file.print DataExporter.export_data_set(predictings)
 end
