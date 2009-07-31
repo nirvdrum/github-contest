@@ -6,5 +6,6 @@ require 'rubygems'
 require 'test/unit'
 require 'mocha'
 require 'ai4r'
+require 'pp'
 
 require 'ext/data_set'

@@ -3,6 +3,7 @@ require 'pp'
 require 'ai4r'
 
 require 'data_loader'
+require 'data_exporter'
 require 'ext/data_set'
 
 puts "Loading data: #{Time.now.to_s}"
@@ -18,10 +19,11 @@ zeror = Ai4r::Classifiers::ZeroR.new.build(data_set)
 
 puts "Printing prediction: #{Time.now.to_s}"
 
-pp predictings.data_items
 predictings.data_items.each_with_index do |predicting, i|
   predicting << zeror.eval(predicting[i])
 end
 predictings.data_labels << 'repo_ids'
 
-pp predictings
+File.open('results.txt', 'w') do |file|
+  file.puts DataExporter.export_data_set(predictings)
+end
