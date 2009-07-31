@@ -29,6 +29,7 @@ module Ai4r
         folds
       end
 
+      # Removes the class column from all data items and the data labels.
       def to_test_set
         without_class = []
 
