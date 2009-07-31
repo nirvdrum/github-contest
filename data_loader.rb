@@ -18,7 +18,7 @@ class DataLoader
   end
 
   def self.load_repositories(data_file='data/repos.txt')
-    ret = {}
+    repositories = {}
 
     relationships = {}
 
@@ -27,7 +27,7 @@ class DataLoader
       name, created_at, parent_id = repo_data.split(',')
 
       # Add the repository to the result hash.
-      ret[repo_id] = Repository.new(name, created_at)
+      repositories[repo_id] = Repository.new(name, created_at)
 
       # Keep track of parent-child relationships.
       relationships[repo_id] = parent_id unless parent_id.nil?
@@ -35,10 +35,21 @@ class DataLoader
 
     # Now that all the repositories have been loaded, establish any parent-child relationships.
     relationships.each do |child_id, parent_id|
-      ret[child_id].parent = ret[parent_id]
+      repositories[child_id].parent = repositories[parent_id]
     end
 
-    ret
+    repositories
   end
 
+  def self.load_predictings(data_file='data/test.txt')
+    data_labels = ['user_id']
+    data_items = []
+
+    IO.foreach(data_file) do |line|
+      data_items << [line.strip]
+    end
+
+    data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => data_items)
+    data_set  
+  end
 end

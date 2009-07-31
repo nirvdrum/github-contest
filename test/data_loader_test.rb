@@ -37,4 +37,15 @@ class DataLoaderTest < Test::Unit::TestCase
     assert_equal expected, DataLoader.load_repositories('data/repos.txt')
   end
 
+  def test_load_predicting
+
+    expected_data_labels = ['user_id']
+    expected_data_items = [['1'], ['5']]
+
+    data_set = DataLoader.load_predictings('data/predictings.txt')
+
+    assert_equal expected_data_labels, data_set.data_labels
+    assert_equal expected_data_items, data_set.data_items
+  end
+
 end
