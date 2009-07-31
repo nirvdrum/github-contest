@@ -2,11 +2,11 @@ require 'rubygems'
 require 'ai4r'
 
 class DataLoader
-  def self.load_watchings
+  def self.load_watchings(data_file='data/data.txt')
     data_labels = ['user_id', 'repo_id']
     data_items = []
 
-    IO.foreach("data/data.txt") do |line|
+    IO.foreach(data_file) do |line|
       data_items << line.strip.split(':')
     end
 

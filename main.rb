@@ -16,3 +16,5 @@ zeror = Ai4r::Classifiers::ZeroR.new.build(data_set)
 
 puts "Printing rules: #{Time.now.to_s}"
 pp zeror.eval(folds.first)
+
+pp folds.first.to_test_set

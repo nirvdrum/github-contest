@@ -7,8 +7,6 @@ module Ai4r
     class DataSet
 
       def stratify(num_folds)
-        stratified = Ai4r::Data::DataSet.new
-
         # Sort the data items by class so we can ensure the folds match the underlying distribution.
         sorted = data_items.sort { |x,y| x.last <=> y.last }
 
@@ -29,6 +27,16 @@ module Ai4r
         end
 
         folds
+      end
+
+      def to_test_set
+        without_class = []
+
+        data_items.each do |item|
+          without_class << item[0...-1]
+        end
+
+        Ai4r::Data::DataSet.new(:data_labels => data_labels[0...-1], :data_items => without_class)
       end
 
     end
