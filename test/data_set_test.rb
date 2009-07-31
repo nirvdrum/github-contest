@@ -26,4 +26,45 @@ class DataSetTest < Test::Unit::TestCase
     assert_equal expected_data_items, test_set.data_items
   end
 
+  def test_stratify
+
+    data_items = [
+            ['a', '1'],
+            ['a', '2'],
+            ['d', '3'],
+            ['e', '4'],
+            ['f', '5'],
+            ['b', '1'],
+            ['q', '6'],
+            ['r', '7'],
+            ['c', '1'],      
+    ]
+
+    expected_first_fold_data_items = [
+            ['a', '1'],
+            ['a', '2'],
+            ['f', '5'],
+    ]
+
+    expected_second_fold_data_items = [
+            ['b', '1'],
+            ['d', '3'],
+            ['q', '6'],
+    ]
+
+    expected_third_fold_data_items = [
+            ['c', '1'],
+            ['e', '4'],
+            ['r', '7'],
+    ]
+
+    data_set = Ai4r::Data::DataSet.new(:data_items => data_items)
+    folds = data_set.stratify(3)
+
+    assert_equal expected_first_fold_data_items, folds[0].data_items
+    assert_equal expected_second_fold_data_items, folds[1].data_items
+    assert_equal expected_third_fold_data_items, folds[2].data_items
+
+  end
+
 end

@@ -16,7 +16,7 @@ module Ai4r
         num_folds.times do |i|
           fold = []
 
-          index = i + num_folds
+          index = i
 
           while index < sorted.size
             fold << sorted[index]
