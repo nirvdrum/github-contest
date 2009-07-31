@@ -11,20 +11,31 @@ data_set = DataLoader.load_watchings
 repositories = DataLoader.load_repositories
 predictings = DataLoader.load_predictings
 
-puts "Creating data folds: #{Time.now.to_s}"
-folds = data_set.stratify(10)
-
 puts "Building classifier: #{Time.now.to_s}"
-zeror = Ai4r::Classifiers::ZeroR.new.build(data_set)
+count = 0
+predictions = {}
+data_set.cross_validation(10) do |training_set, test_set|
+  zeror = Ai4r::Classifiers::ZeroR.new.build(training_set)
+  prediction = zeror.eval(test_set.to_test_set)
+
+  predictions[prediction] ||= []
+  predictions[prediction] << zeror
+
+  puts "Results for fold #{count + 1}: #{prediction}(#{repositories[prediction].name}) with #{test_set.class_frequency(prediction) * 100}%"
+  count += 1
+end
+
+best_prediction = predictions.max { |x,y| x.size <=> y.size }
+pp best_prediction.first
+classifier = best_prediction.last.first
 
 puts "Printing prediction: #{Time.now.to_s}"
-
 predictings.data_items.each_with_index do |predicting, i|
-  predicting << zeror.eval(predicting[i])
+  predicting << classifier.eval(predictings[i])
 end
 predictings.data_labels << 'repo_ids'
 
-puts "Accuracy: #{data_set.class_frequency('1') * 100}%"
+puts "Accuracy: #{data_set.class_frequency(predictings.data_items.first.last) * 100}%"
 
 File.open('results.txt', 'w') do |file|
   file.print DataExporter.export_data_set(predictings)

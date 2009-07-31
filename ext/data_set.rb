@@ -2,7 +2,7 @@ require 'rubygems'
 require 'ai4r'
 require 'enumerator'
 
-require '../data_set_utilities'
+require 'data_set_utilities'
 
 module Ai4r
   module Data
