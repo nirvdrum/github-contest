@@ -64,7 +64,63 @@ class DataSetTest < Test::Unit::TestCase
     assert_equal expected_first_fold_data_items, folds[0].data_items
     assert_equal expected_second_fold_data_items, folds[1].data_items
     assert_equal expected_third_fold_data_items, folds[2].data_items
+  end
 
+  def test_add_operator
+    data_labels = ['blah', 'yo']
+
+    first_data_items = [
+            ['1', 'abc'],
+            ['5', 'cde']
+    ]
+
+    second_data_items = [
+            ['3', 'res'],
+            ['7', 'aoeu']
+    ]
+
+    expected_data_items = [
+            ['1', 'abc'],
+            ['5', 'cde'],
+            ['3', 'res'],
+            ['7', 'aoeu']
+    ]
+
+    first_data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => first_data_items)
+    second_data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => second_data_items)
+
+    added_data_set = first_data_set + second_data_set
+
+    assert_equal data_labels, added_data_set.data_labels
+    assert_equal expected_data_items, added_data_set.data_items
+  end
+
+  def test_add_operator_fails_on_different_sizes
+    data_labels = ['blah', 'yo']
+
+    first_data_items = [
+            ['1'],
+            ['5']
+    ]
+
+    second_data_items = [
+            ['3', 'res'],
+            ['7', 'aoeu']
+    ]
+
+    expected_data_items = [
+            ['1', 'abc'],
+            ['5', 'cde'],
+            ['3', 'res'],
+            ['7', 'aoeu']
+    ]
+
+    first_data_set = Ai4r::Data::DataSet.new(:data_labels => ['blah'], :data_items => first_data_items)
+    second_data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => second_data_items)
+
+    assert_raise ArgumentError do
+      added_data_set = first_data_set + second_data_set
+    end 
   end
 
 end

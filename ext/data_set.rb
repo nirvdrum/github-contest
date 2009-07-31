@@ -40,6 +40,12 @@ module Ai4r
         Ai4r::Data::DataSet.new(:data_labels => data_labels[0...-1], :data_items => without_class)
       end
 
+      def +(other)
+        added_data_items = data_items + other.data_items
+
+        ret = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => added_data_items)
+      end
+
     end
   end
 end
