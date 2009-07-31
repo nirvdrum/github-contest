@@ -46,6 +46,16 @@ module Ai4r
         ret = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => added_data_items)
       end
 
+      def class_frequency(value)
+        count = 0
+
+        data_items.each do |data_item|
+          count += 1 if data_item.last == value
+        end
+
+        count / data_items.size.to_f
+      end
+
     end
   end
 end

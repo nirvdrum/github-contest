@@ -123,4 +123,27 @@ class DataSetTest < Test::Unit::TestCase
     end 
   end
 
+  def test_class_frequency
+
+    data_items = [
+            ['a', '1'],
+            ['a', '2'],
+            ['d', '3'],
+            ['e', '4'],
+            ['f', '5'],
+            ['b', '1'],
+            ['q', '6'],
+            ['r', '7'],
+            ['c', '1'],
+            ['x', '3']
+    ]
+
+    data_set = Ai4r::Data::DataSet.new(:data_items => data_items)
+
+    assert_equal 0.3, data_set.class_frequency('1')
+    assert_equal 0, data_set.class_frequency(nil)
+    assert_equal 0, data_set.class_frequency('')
+    assert_equal 0.1, data_set.class_frequency('6')
+  end
+
 end
