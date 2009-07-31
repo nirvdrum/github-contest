@@ -19,4 +19,22 @@ class DataLoaderTest < Test::Unit::TestCase
     assert_equal expected_data_labels, data_set.data_labels
     assert_equal expected_data_items, data_set.data_items
   end
+
+  def test_load_repos
+
+    a = Repository.new 'user_a/blah', '2009-02-26'
+    b = Repository.new 'user_b/yo', '2009-05-17'
+    c = Repository.new 'user_c/yo', '2009-03-19'
+
+    b.parent = c
+
+    expected = {
+            '1234' => a,
+            '2345' => b,
+            '6790' => c
+    }
+
+    assert_equal expected, DataLoader.load_repositories('data/repos.txt')
+  end
+
 end
