@@ -15,7 +15,7 @@ puts "Building classifier: #{Time.now.to_s}"
 count = 0
 predictions = {}
 data_set.cross_validation(10) do |training_set, test_set|
-  classifier = Ai4r::Classifiers::OneR.new.build(training_set)
+  classifier = Ai4r::Classifiers::ZeroR.new.build(training_set)
   prediction = classifier.eval(test_set.to_test_set)
 
   predictions[prediction] ||= []
@@ -35,6 +35,17 @@ end
 predictings.data_labels << 'repo_ids'
 
 puts "Accuracy: #{data_set.class_frequency(predictings.data_items.first.last) * 100}%"
+
+repo_counts = {}
+repositories.values.each do |repo|
+  repo_counts[repo.watchers.size] ||= []
+  repo_counts[repo.watchers.size] << repo
+end
+
+puts repo_counts.keys.max
+repo_counts[repo_counts.keys.max].each {|repo| puts repo.name}
+
+puts repositories["10"].watchers.size
 
 File.open('results.txt', 'w') do |file|
   file.print DataExporter.export_data_set(predictings)
