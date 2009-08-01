@@ -31,7 +31,9 @@ module Ai4r
             index += num_folds
           end
 
-          folds << Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => fold)
+          # Randomize the data again to guard against classifiers that are prone to choosing the first
+          # sample drawn from the data set.
+          folds << Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => fold.sort_by { rand })
         end
 
         folds
