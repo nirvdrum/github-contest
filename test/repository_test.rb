@@ -12,15 +12,19 @@ class RepositoryTest < Test::Unit::TestCase
     assert_equal name, r.name
     assert_equal created_at, r.created_at
     assert_nil r.parent
+    assert_equal [], r.watchers
+    assert_equal [], r.children
   end
 
   def test_set_parent
     parent = Repository.new 'user_a/yo', '2009-02-26'
     child = Repository.new 'user_b/yo', '2009-03-16'
-
+  
     child.parent = parent
 
-    assert_equal parent, child.parent  
+    assert_equal parent, child.parent
+    assert_equal [child], parent.children
+    assert_equal [], child.children
   end
 
   def test_equality
