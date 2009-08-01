@@ -8,6 +8,12 @@ class Watcher
     @repositories = []
   end
 
+  def ==(other)
+    return false if other.nil?
+
+    id == other.id
+  end
+
   def to_s
     if @repositories.empty?
       "#{id}"

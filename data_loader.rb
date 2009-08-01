@@ -2,6 +2,7 @@ require 'rubygems'
 require 'ai4r'
 
 require 'repository'
+require 'watcher'
 
 class DataLoader
 
@@ -19,7 +20,7 @@ class DataLoader
 
   def self.load_repositories(data_dir='data')
     repositories = {}
-
+  
     relationships = {}
 
     IO.foreach(File.join(data_dir, 'repos.txt')) do |line|
@@ -39,9 +40,12 @@ class DataLoader
     end
 
     # Load in the watchers.
+    watchers = {}
     IO.foreach(File.join(data_dir, 'data.txt')) do |line|
       user_id, repo_id = line.strip.split(':')
-      repositories[repo_id].watchers << user_id
+      watcher = watchers[user_id] || Watcher.new(user_id)
+      watchers[user_id] = watcher
+      repositories[repo_id].watchers << watcher
     end
 
     repositories

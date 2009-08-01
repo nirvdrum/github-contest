@@ -39,4 +39,14 @@ class WatcherTest < Test::Unit::TestCase
     assert_equal '1:1234\n1:2345', @watcher.to_s
   end
 
+  def test_equality
+    first = Watcher.new '1'
+    second = Watcher.new '1'
+
+    assert first == second
+
+    third = Watcher.new '2'
+    assert first != third
+  end
+
 end

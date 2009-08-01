@@ -28,9 +28,9 @@ class DataLoaderTest < Test::Unit::TestCase
 
     b.parent = c
 
-    a.watchers << '1'
-    b.watchers << '2'
-    c.watchers << '5'
+    a.watchers << Watcher.new('1')
+    b.watchers << Watcher.new('2')
+    c.watchers << Watcher.new('5')
 
     expected = {
             '1234' => a,
