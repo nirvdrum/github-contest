@@ -11,6 +11,10 @@ module Ai4r
       include DataSetUtilities
 
       def stratify(num_folds)
+        # Although the data will ultimately be sorted by class value, the entries within that class value should be
+        # randomized to start.  Otherwise, stratification will always lead to the same resulting folds.
+        randomized = data_items.sort_by { rand }
+
         # Sort the data items by class so we can ensure the folds match the underlying distribution.
         sorted = data_items.sort { |x,y| x.last <=> y.last }
 

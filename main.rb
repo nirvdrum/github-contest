@@ -15,18 +15,17 @@ puts "Building classifier: #{Time.now.to_s}"
 count = 0
 predictions = {}
 data_set.cross_validation(10) do |training_set, test_set|
-  zeror = Ai4r::Classifiers::ZeroR.new.build(training_set)
-  prediction = zeror.eval(test_set.to_test_set)
+  classifier = Ai4r::Classifiers::OneR.new.build(training_set)
+  prediction = classifier.eval(test_set.to_test_set)
 
   predictions[prediction] ||= []
-  predictions[prediction] << zeror
+  predictions[prediction] << classifier
 
   puts "Results for fold #{count + 1}: #{prediction}(#{repositories[prediction].name}) with #{test_set.class_frequency(prediction) * 100}%"
   count += 1
 end
 
 best_prediction = predictions.max { |x,y| x.size <=> y.size }
-pp best_prediction.first
 classifier = best_prediction.last.first
 
 puts "Printing prediction: #{Time.now.to_s}"

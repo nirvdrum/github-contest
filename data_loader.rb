@@ -5,11 +5,11 @@ require 'repository'
 
 class DataLoader
 
-  def self.load_watchings(data_file='data/data.txt')
+  def self.load_watchings(data_dir='data')
     data_labels = ['user_id', 'repo_id']
     data_items = []
 
-    IO.foreach(data_file) do |line|
+    IO.foreach(File.join(data_dir, 'data.txt')) do |line|
       data_items << line.strip.split(':')
     end
 
@@ -17,12 +17,12 @@ class DataLoader
     data_set
   end
 
-  def self.load_repositories(data_file='data/repos.txt')
+  def self.load_repositories(data_dir='data')
     repositories = {}
 
     relationships = {}
 
-    IO.foreach(data_file) do |line|
+    IO.foreach(File.join(data_dir, 'repos.txt')) do |line|
       repo_id, repo_data = line.strip.split(':')
       name, created_at, parent_id = repo_data.split(',')
 
@@ -38,6 +38,12 @@ class DataLoader
       repositories[child_id].parent = repositories[parent_id]
     end
 
+    # Load in the watchers.
+    IO.foreach(File.join(data_dir, 'data.txt')) do |line|
+      user_id, repo_id = line.strip.split(':')
+      repositories[repo_id].watchers << user_id
+    end
+
     repositories
   end
 
@@ -50,6 +56,6 @@ class DataLoader
     end
 
     data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => data_items)
-    data_set  
+    data_set
   end
 end

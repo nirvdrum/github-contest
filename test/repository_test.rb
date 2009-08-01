@@ -24,7 +24,6 @@ class RepositoryTest < Test::Unit::TestCase
   end
 
   def test_equality
-
     a = Repository.new 'user_a/yo', '2009-02-26'
     b = Repository.new 'user_a/yo', '2009-02-26'
 
@@ -34,6 +33,22 @@ class RepositoryTest < Test::Unit::TestCase
     # Two repositories with different parents should not be equal.
     a.parent = b
     assert a != b
+
+    # Two repositories with different watchers should not be equal.
+    a.parent = b.parent
+    assert a == b
+    a.watchers << '1'
+    assert a != b
+  end
+
+  def test_watchers
+    a = Repository.new 'user_a/yo', '2009-02-26'
+    assert_equal [], a.watchers
+
+    a.watchers << '1234'
+    a.watchers << '2356'
+
+    assert_equal ['1234', '2356'], a.watchers
   end
 
 end

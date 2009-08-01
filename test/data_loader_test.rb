@@ -14,7 +14,7 @@ class DataLoaderTest < Test::Unit::TestCase
 
     expected_data_set = Ai4r::Data::DataSet.new(:data_labels => expected_data_labels, :data_items => expected_data_items)
 
-    data_set = DataLoader.load_watchings('data/watchings.txt')
+    data_set = DataLoader.load_watchings('data')
 
     assert_equal expected_data_labels, data_set.data_labels
     assert_equal expected_data_items, data_set.data_items
@@ -28,13 +28,17 @@ class DataLoaderTest < Test::Unit::TestCase
 
     b.parent = c
 
+    a.watchers << '1'
+    b.watchers << '2'
+    c.watchers << '5'
+
     expected = {
             '1234' => a,
             '2345' => b,
             '6790' => c
     }
 
-    assert_equal expected, DataLoader.load_repositories('data/repos.txt')
+    assert_equal expected, DataLoader.load_repositories('data')
   end
 
   def test_load_predicting
