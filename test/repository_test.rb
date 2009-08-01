@@ -85,4 +85,26 @@ class RepositoryTest < Test::Unit::TestCase
       assert_equal grandchild_b, Repository.popular_family_member_by_watchers(repo)
     end
   end
+
+  def test_popular_family_member_by_forks_single_repo
+    repo = Repository.new 'user_a/yo', '2009-02-26'
+
+    assert_equal repo, Repository.popular_family_member_by_forks(repo)
+  end
+
+  def test_popular_family_member_by_forks
+    parent = Repository.new 'user_a/yo', '2009-02-26'
+    child = Repository.new 'user_b/yo', '2009-03-16'
+    grandchild_a = Repository.new 'user_c/yo', '2009-05-08'
+    grandchild_b = Repository.new 'user_c/yo', '2009-05-09'
+
+    # Establish family bond.
+    child.parent = parent
+    grandchild_a.parent = child
+    grandchild_b.parent = child
+
+    [parent, child, grandchild_a, grandchild_b].each do |repo|
+      assert_equal child, Repository.popular_family_member_by_forks(repo)
+    end
+  end
 end

@@ -31,6 +31,14 @@ class Repository
     results[results.keys.max]
   end
 
+  def self.popular_family_member_by_forks(repository)
+    root = find_root(repository)
+
+    results = root.collect_fork_count
+
+    results[results.keys.max]
+  end
+
   # Utility method used for recursive call portion of self.popular_family_member_by_watchers
   def collect_watcher_count
     ret = { watchers.size => self }
@@ -38,6 +46,18 @@ class Repository
     children.collect do |child|
       # TODO (KJM 07/31/09) This will clobber an existing entry on duplicate watcher count.  For now I don't care much.
       ret.merge!(child.collect_watcher_count)
+    end
+
+    ret
+  end
+
+  # Utility method used for recursive call portion of self.popular_family_member_by_forks
+  def collect_fork_count
+    ret = { children.size => self }
+
+    children.collect do |child|
+      # TODO (KJM 07/31/09) This will clobber an existing entry on duplicate watcher count.  For now I don't care much.
+      ret.merge!(child.collect_fork_count)
     end
 
     ret
