@@ -1,8 +1,9 @@
 class Repository
 
-  attr_reader :name, :created_at, :watchers, :children, :parent
+  attr_reader :id, :name, :created_at, :watchers, :children, :parent
 
-  def initialize(name, created_at)
+  def initialize(id, name, created_at)
+    @id = id
     @name = name
     @created_at = created_at
     @watchers = []
@@ -11,7 +12,7 @@ class Repository
 
   def parent=(parent)
     @parent = parent
-    parent.children << self
+    parent.children << self unless parent.nil?
   end
 
   def ==(other)
@@ -21,6 +22,14 @@ class Repository
     @created_at == other.created_at &&
     @parent == other.parent &&
     @watchers == other.watchers    
+  end
+
+  def to_s
+    ret = "#{id}:#{name},#{created_at}"
+
+    ret << ",#{parent.id}" unless parent.nil?
+
+    ret
   end
 
   def self.popular_family_member_by_watchers(repository)

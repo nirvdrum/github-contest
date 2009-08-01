@@ -27,7 +27,7 @@ class DataLoader
       name, created_at, parent_id = repo_data.split(',')
 
       # Add the repository to the result hash.
-      repositories[repo_id] = Repository.new(name, created_at)
+      repositories[repo_id] = Repository.new(repo_id, name, created_at)
 
       # Keep track of parent-child relationships.
       relationships[repo_id] = parent_id unless parent_id.nil?

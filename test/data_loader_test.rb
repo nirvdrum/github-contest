@@ -22,9 +22,9 @@ class DataLoaderTest < Test::Unit::TestCase
 
   def test_load_repos
 
-    a = Repository.new 'user_a/blah', '2009-02-26'
-    b = Repository.new 'user_b/yo', '2009-05-17'
-    c = Repository.new 'user_c/yo', '2009-03-19'
+    a = Repository.new '1234', 'user_a/blah', '2009-02-26'
+    b = Repository.new '2345', 'user_b/yo', '2009-05-17'
+    c = Repository.new '6790', 'user_c/yo', '2009-03-19'
 
     b.parent = c
 

@@ -3,12 +3,18 @@ require 'repository'
 
 class RepositoryTest < Test::Unit::TestCase
 
+  def setup
+    @repo = Repository.new '1234', 'user_a/yo', '2009-02-26'
+  end
+
   def test_new
+    id = '1234'
     name = 'user_a/yo'
     created_at = '2009-02-26'
 
-    r = Repository.new name, created_at
+    r = Repository.new id, name, created_at
 
+    assert_equal id, r.id
     assert_equal name, r.name
     assert_equal created_at, r.created_at
     assert_nil r.parent
@@ -17,8 +23,8 @@ class RepositoryTest < Test::Unit::TestCase
   end
 
   def test_set_parent
-    parent = Repository.new 'user_a/yo', '2009-02-26'
-    child = Repository.new 'user_b/yo', '2009-03-16'
+    parent = Repository.new '1234', 'user_a/yo', '2009-02-26'
+    child = Repository.new '2345', 'user_b/yo', '2009-03-16'
   
     child.parent = parent
 
@@ -28,8 +34,8 @@ class RepositoryTest < Test::Unit::TestCase
   end
 
   def test_equality
-    a = Repository.new 'user_a/yo', '2009-02-26'
-    b = Repository.new 'user_a/yo', '2009-02-26'
+    a = Repository.new '1234', 'user_a/yo', '2009-02-26'
+    b = Repository.new '1234', 'user_a/yo', '2009-02-26'
 
     # Two repositories with the same name, creation time, and parent should be equal.
     assert a == b
@@ -46,26 +52,23 @@ class RepositoryTest < Test::Unit::TestCase
   end
 
   def test_watchers
-    a = Repository.new 'user_a/yo', '2009-02-26'
-    assert_equal [], a.watchers
+    assert_equal [], @repo.watchers
 
-    a.watchers << '1234'
-    a.watchers << '2356'
+    @repo.watchers << '1234'
+    @repo.watchers << '2356'
 
-    assert_equal ['1234', '2356'], a.watchers
+    assert_equal ['1234', '2356'], @repo.watchers
   end
 
   def test_popular_family_member_by_watchers_single_repo
-    repo = Repository.new 'user_a/yo', '2009-02-26'
-
-    assert_equal repo, Repository.popular_family_member_by_watchers(repo)
+    assert_equal @repo, Repository.popular_family_member_by_watchers(@repo)
   end
 
   def test_popular_family_member_by_watchers
-    parent = Repository.new 'user_a/yo', '2009-02-26'
-    child = Repository.new 'user_b/yo', '2009-03-16'
-    grandchild_a = Repository.new 'user_c/yo', '2009-05-08'
-    grandchild_b = Repository.new 'user_c/yo', '2009-05-09'
+    parent = Repository.new '1234', 'user_a/yo', '2009-02-26'
+    child = Repository.new '2345', 'user_b/yo', '2009-03-16'
+    grandchild_a = Repository.new '6790', 'user_c/yo', '2009-05-08'
+    grandchild_b = Repository.new '2368', 'user_c/yo', '2009-05-09'
 
     # Establish family bond.
     child.parent = parent
@@ -87,16 +90,14 @@ class RepositoryTest < Test::Unit::TestCase
   end
 
   def test_popular_family_member_by_forks_single_repo
-    repo = Repository.new 'user_a/yo', '2009-02-26'
-
-    assert_equal repo, Repository.popular_family_member_by_forks(repo)
+    assert_equal @repo, Repository.popular_family_member_by_forks(@repo)
   end
 
   def test_popular_family_member_by_forks
-    parent = Repository.new 'user_a/yo', '2009-02-26'
-    child = Repository.new 'user_b/yo', '2009-03-16'
-    grandchild_a = Repository.new 'user_c/yo', '2009-05-08'
-    grandchild_b = Repository.new 'user_c/yo', '2009-05-09'
+    parent = Repository.new '12341', 'user_a/yo', '2009-02-26'
+    child = Repository.new '2345', 'user_b/yo', '2009-03-16'
+    grandchild_a = Repository.new '6790', 'user_c/yo', '2009-05-08'
+    grandchild_b = Repository.new '2368', 'user_c/yo', '2009-05-09'
 
     # Establish family bond.
     child.parent = parent
@@ -106,5 +107,14 @@ class RepositoryTest < Test::Unit::TestCase
     [parent, child, grandchild_a, grandchild_b].each do |repo|
       assert_equal child, Repository.popular_family_member_by_forks(repo)
     end
+  end
+
+  def test_to_s
+    assert_equal '1234:user_a/yo,2009-02-26', @repo.to_s
+
+    with_parent = Repository.new '2356', 'user_b/yo', '2009-03-21'
+    with_parent.parent = @repo
+
+    assert_equal '2356:user_b/yo,2009-03-21,1234', with_parent.to_s
   end
 end
