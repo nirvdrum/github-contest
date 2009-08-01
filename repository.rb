@@ -23,4 +23,30 @@ class Repository
     @watchers == other.watchers    
   end
 
+  def self.popular_family_member_by_watchers(repository)
+    root = find_root(repository)
+
+    results = root.collect_watcher_count
+
+    results[results.keys.max]
+  end
+
+  # Utility method used for recursive call portion of self.popular_family_member_by_watchers
+  def collect_watcher_count
+    ret = { watchers.size => self }
+
+    children.collect do |child|
+      # TODO (KJM 07/31/09) This will clobber an existing entry on duplicate watcher count.  For now I don't care much.
+      ret.merge!(child.collect_watcher_count)
+    end
+
+    ret
+  end
+
+  private
+
+  def self.find_root(repository)
+    repository.parent.nil? ? repository : find_root(repository.parent)
+  end
+
 end
