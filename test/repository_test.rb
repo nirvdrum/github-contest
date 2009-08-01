@@ -1,5 +1,6 @@
 require 'test_helper'
 require 'repository'
+require 'watcher'
 
 class RepositoryTest < Test::Unit::TestCase
 
@@ -54,10 +55,22 @@ class RepositoryTest < Test::Unit::TestCase
   def test_watchers
     assert_equal [], @repo.watchers
 
-    @repo.watchers << '1234'
-    @repo.watchers << '2356'
+    one = Watcher.new '1'
+    two = Watcher.new '2'
 
-    assert_equal ['1234', '2356'], @repo.watchers
+    @repo.watchers << one
+    @repo.watchers << two
+
+    # Make sure the watchers list was populated correctly.
+    assert_equal [one, two], @repo.watchers
+
+    # Make sure a watcher can only appear once.
+    @repo.watchers << one
+    assert_equal [one, two], @repo.watchers
+
+    # Make sure the bi-directional relationship was established.
+    assert_equal [@repo], one.repositories
+    assert_equal [@repo], two.repositories
   end
 
   def test_popular_family_member_by_watchers_single_repo
