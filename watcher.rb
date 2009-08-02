@@ -10,6 +10,10 @@ class RepositorySet < Array
       repository.watchers << watcher
     end
   end
+
+  def ==(other)
+    self.size == other.size && (self - other).empty?
+  end
 end
 
 class Watcher
@@ -28,6 +32,11 @@ class Watcher
 
     id == other.id
   end
+  alias_method :eql?, :==
+
+  def hash
+    @id.hash
+  end
 
   def to_s
     if @repositories.empty?
@@ -35,6 +44,22 @@ class Watcher
     else
       @repositories.collect { |repo| "#{id}:#{repo.id}" }.join('\n')
     end
+  end
+
+  def self.from_data_set(data_set)
+    watchers = {}
+
+    repositories = {}
+    data_set.data_items.each do |sample|
+      user_id, repo_id = sample
+
+      watchers[user_id] ||= Watcher.new user_id
+      repositories[repo_id] ||= Repository.new repo_id
+
+      watchers[user_id].repositories << repositories[repo_id]
+    end
+
+    watchers
   end
 
 end

@@ -9,7 +9,8 @@ class DataLoaderTest < Test::Unit::TestCase
     expected_data_items = [
             ['1', '1234'],
             ['2', '2345'],
-            ['5', '6790']
+            ['5', '6790'],
+            ['1', '2345']
     ]
 
     expected_data_set = Ai4r::Data::DataSet.new(:data_labels => expected_data_labels, :data_items => expected_data_items)
@@ -28,8 +29,10 @@ class DataLoaderTest < Test::Unit::TestCase
 
     b.parent = c
 
-    a.watchers << Watcher.new('1')
+    w1 = Watcher.new('1')
+    a.watchers << w1
     b.watchers << Watcher.new('2')
+    b.watchers << w1
     c.watchers << Watcher.new('5')
 
     expected = {

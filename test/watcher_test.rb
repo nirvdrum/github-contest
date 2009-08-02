@@ -1,6 +1,7 @@
 require 'test_helper'
 require 'watcher'
 require 'repository'
+require 'data_loader'
 
 class WatcherTest < Test::Unit::TestCase
 
@@ -56,6 +57,51 @@ class WatcherTest < Test::Unit::TestCase
 
     third = Watcher.new '2'
     assert first != third
+
+    # Watchers do not care about repositories for matters of equality.
+    first.repositories << Repository.new('1234', 'user_a/blah', '2009-05-23')
+    assert first == second
+  end
+
+  def test_eql
+    first = Watcher.new '1'
+    second = Watcher.new '1'
+
+    assert first.eql?(second)
+    assert first.hash == second.hash
+
+    third = Watcher.new '2'
+    assert !first.eql?(third)
+    assert first.hash != third.hash
+
+    # Watchers do not care about repositories for matters of equality.
+    first.repositories << Repository.new('1234', 'user_a/blah', '2009-05-23')
+    assert first.eql?(second)
+    assert first.hash == second.hash
+  end
+
+  def test_from_data_set
+    data_set = DataLoader.load_watchings('data')
+
+    w1 = Watcher.new('1')
+    w2 = Watcher.new('2')
+    w3 = Watcher.new('5')
+
+    r1 = Repository.new '1234'
+    r2 = Repository.new '2345'
+    r3 = Repository.new '6790'
+
+    w1.repositories << r1
+    w1.repositories << r2
+    w2.repositories << r2
+    w3.repositories << r3
+
+    actual = Watcher.from_data_set(data_set)
+    assert_equal({'1' => w1, '2' => w2, '5' => w3}, actual)
+
+    assert_equal w1.repositories, actual.values[0].repositories
+    assert_equal w2.repositories, actual.values[1].repositories
+    assert_equal w3.repositories, actual.values[2].repositories
   end
 
 end

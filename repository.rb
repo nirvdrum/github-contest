@@ -10,13 +10,17 @@ class WatcherSet < Array
       watcher.repositories << repo
     end
   end
+
+  def ==(other)
+    self.size == other.size && (self - other).empty?
+  end
 end
 
 class Repository
 
   attr_reader :id, :name, :created_at, :watchers, :children, :parent
 
-  def initialize(id, name, created_at)
+  def initialize(id, name=nil, created_at=nil)
     @id = id
     @name = name
     @created_at = created_at
@@ -37,6 +41,11 @@ class Repository
     @created_at == other.created_at &&
     @parent == other.parent &&
     @watchers == other.watchers    
+  end
+  alias_method :eql?, :==
+
+  def hash
+    @id.hash
   end
 
   def to_s

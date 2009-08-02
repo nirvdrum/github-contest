@@ -48,8 +48,31 @@ class RepositoryTest < Test::Unit::TestCase
     # Two repositories with different watchers should not be equal.
     a.parent = b.parent
     assert a == b
-    a.watchers << '1'
+    a.watchers << Watcher.new('1')
     assert a != b
+  end
+
+  def test_eql
+    a = Repository.new '1234', 'user_a/yo', '2009-02-26'
+    b = Repository.new '1234', 'user_a/yo', '2009-02-26'
+
+    # Two repositories with the same name, creation time, and parent should be equal.
+    assert a.eql?(b)
+    assert a.hash == b.hash
+
+    # Two repositories with different parents should not be equal.
+    a.parent = b
+    assert !a.eql?(b)
+    assert a.hash == b.hash # Hash on ID.
+
+    # Two repositories with different watchers should not be equal.
+    a.parent = b.parent
+    assert a.eql?(b)
+    assert a.hash == b.hash
+
+    a.watchers << Watcher.new('1')
+    assert !a.eql?(b)
+    assert a.hash == b.hash # Hash on ID.
   end
 
   def test_watchers
@@ -88,14 +111,17 @@ class RepositoryTest < Test::Unit::TestCase
     grandchild_a.parent = child
     grandchild_b.parent = child
 
-    parent.watchers << '2'
-    parent.watchers << '6'
+    w1 = Watcher.new('2')
+    w2 = Watcher.new('6')
 
-    grandchild_a.watchers << '7'
+    parent.watchers << w1
+    parent.watchers << w2
 
-    grandchild_b.watchers << '8'
-    grandchild_b.watchers << '2'
-    grandchild_b.watchers << '6'
+    grandchild_a.watchers << Watcher.new('7')
+
+    grandchild_b.watchers << Watcher.new('8')
+    grandchild_b.watchers << w1
+    grandchild_b.watchers << w2
 
     [parent, child, grandchild_a, grandchild_b].each do |repo|
       assert_equal grandchild_b, Repository.popular_family_member_by_watchers(repo)
