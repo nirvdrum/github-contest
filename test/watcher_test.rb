@@ -81,7 +81,7 @@ class WatcherTest < Test::Unit::TestCase
   end
 
   def test_from_data_set_with_repositories
-    data_set = DataLoader.load_watchings('data')
+    data_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
 
     w1 = Watcher.new('1')
     w2 = Watcher.new('2')
@@ -105,7 +105,7 @@ class WatcherTest < Test::Unit::TestCase
   end
 
   def test_from_data_set_without_repositories
-    data_set = DataLoader.load_predictings('data')
+    data_set = DataLoader.load_predictings("#{File.dirname(__FILE__)}/data")
 
     w1 = Watcher.new('1')
     w2 = Watcher.new('5')

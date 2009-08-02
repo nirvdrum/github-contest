@@ -16,6 +16,7 @@ class DataSetUtilitiesTest < Test::Unit::TestCase
     ]
 
     data_set = Ai4r::Data::DataSet.new(:data_items => data_items)
+    data_set.stubs(:rand).returns(0) # Random data in tests is hard to test for.
     folds = data_set.stratify(3)
 
     expected = [

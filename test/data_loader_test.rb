@@ -15,7 +15,7 @@ class DataLoaderTest < Test::Unit::TestCase
 
     expected_data_set = Ai4r::Data::DataSet.new(:data_labels => expected_data_labels, :data_items => expected_data_items)
 
-    data_set = DataLoader.load_watchings('data')
+    data_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
 
     assert_equal expected_data_labels, data_set.data_labels
     assert_equal expected_data_items, data_set.data_items
@@ -41,7 +41,7 @@ class DataLoaderTest < Test::Unit::TestCase
             '6790' => c
     }
 
-    assert_equal expected, DataLoader.load_repositories('data')
+    assert_equal expected, DataLoader.load_repositories("#{File.dirname(__FILE__)}/data")
   end
 
   def test_load_predicting
@@ -49,7 +49,7 @@ class DataLoaderTest < Test::Unit::TestCase
     expected_data_labels = ['user_id']
     expected_data_items = [['1'], ['5']]
 
-    data_set = DataLoader.load_predictings('data')
+    data_set = DataLoader.load_predictings("#{File.dirname(__FILE__)}/data")
 
     assert_equal expected_data_labels, data_set.data_labels
     assert_equal expected_data_items, data_set.data_items
