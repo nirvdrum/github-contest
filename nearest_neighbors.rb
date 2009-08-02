@@ -1,5 +1,7 @@
 class NearestNeighbors
 
+  attr_reader :training_repositories, :training_watchers
+
   # Calculates Euclidian distance between two repositories.
   def self.euclidian_distance(first, second)
     common_watchers = first.watchers & second.watchers
@@ -36,4 +38,46 @@ class NearestNeighbors
     (number_correct.to_f / actual.repositories.size) - (number_incorrect.to_f / predicted.repositories.size)
   end
 
+  def initialize(training_set)
+    @training_watchers = Watcher.from_data_set training_set
+    @training_repositories = {}
+
+    @training_watchers.values.each do |watcher|
+      watcher.repositories.each do |repo|
+        @training_repositories[repo.id] ||= repo
+      end
+    end
+  end
+
+  def evaluate(test_set)
+    # Build up a list of watcher objects from the test set.
+    @test_instances = Watcher.from_data_set test_set
+
+    results = {}
+
+    # For each watcher in the test set . . .
+    @test_instances.each do |user_id, watcher|
+      results[user_id] = {}
+
+      # See if we have any training instances.  If not, we really can't guess anything.
+      watcher = @training_watchers[user_id]
+      next if watcher.nil?
+
+      # For each observed repository in the training data . . .
+      watcher.repositories.each do |watcher_repo|
+
+        # Compare against all other repositories to calculate the Euclidean distance between them.
+        @training_repositories.each do |training_repo_id, training_repo|
+          # Skip over repositories we already know the watcher belongs to.     
+          next if training_repo.watchers.include?(watcher)
+
+          # Calculate the distance, culling for absolute non-matches (i.e., distance == Float::MAX)
+          distance = NearestNeighbors.euclidian_distance(watcher_repo, training_repo)
+          results[user_id][distance] = training_repo unless distance == Float::MAX
+        end
+      end
+    end
+
+    results
+  end
 end

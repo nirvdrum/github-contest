@@ -2,6 +2,7 @@ require 'test_helper'
 require 'repository'
 require 'nearest_neighbors'
 require 'watcher'
+require 'data_loader'
 
 class NearestNeighborsTest < Test::Unit::TestCase
 
@@ -126,6 +127,77 @@ class NearestNeighborsTest < Test::Unit::TestCase
     # Now we're back to predicting 2 / 4 repositories correctly.
     @one.watchers << predicted
     assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
+  end
+
+  def test_initialize
+    training_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
+    knn = NearestNeighbors.new(training_set)
+
+    r1 = Repository.new '1234'
+    r2 = Repository.new '2345'
+    r3 = Repository.new '6790'
+
+    w1 = Watcher.new '1'
+    w2 = Watcher.new '2'
+    w3 = Watcher.new '5'
+
+    r1.watchers << w1
+    r2.watchers << w1
+    r2.watchers << w2
+    r3.watchers << w3
+
+    repositories = { r1.id => r1, r2.id => r2, r3.id => r3 }  
+
+    assert_equal Watcher.from_data_set(training_set), knn.training_watchers
+    assert_equal repositories, knn.training_repositories
+  end
+
+  def test_evaluate
+    fold1_items = [
+            ['1', '2345'],
+            ['2', '2345'],
+            ['2', '6790']
+    ]
+    fold1 = Ai4r::Data::DataSet.new(:data_items => fold1_items)
+
+    fold2_items = [
+            ['1', '6790'],
+            ['5', '6790'],
+            ['1', '1234']
+    ]
+    fold2 = Ai4r::Data::DataSet.new(:data_items => fold2_items)
+
+    data_set = fold1 + fold2
+    data_set.stubs(:stratify).with(2).returns([fold1, fold2])
+
+    expected = [
+            {
+                    '1' => {},
+                    '2' => {}
+            },
+            {
+                    '1' => {1.0 => '6790'},
+                    '5' => {}
+            }
+    ]
+
+    count = 0
+    data_set.cross_validation(2) do |training_set, test_set|
+      knn = NearestNeighbors.new(training_set)
+
+      evaluation = knn.evaluate(test_set)
+
+      # We're returned repository objects, but the expectation only uses repository IDs.
+      # So, check the returned values against the IDs.
+      assert_equal expected[count].keys.size, evaluation.keys.size
+      evaluation.each do |user_id, scores|
+        scores.each do |score, repo|
+          assert_equal expected[count][user_id][score], repo.id
+        end
+      end
+
+      count += 1
+    end
   end
 
   private
