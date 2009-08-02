@@ -63,6 +63,71 @@ class NearestNeighborsTest < Test::Unit::TestCase
     ensure_symmetry(0.25, @one, three)
   end
 
+  def test_accuracy
+    actual = Watcher.new '1'
+    predicted = Watcher.new '2'
+
+    # Exact match should be 1.0.
+    assert_equal 1.0, NearestNeighbors.accuracy(actual, predicted)
+
+    # Exact match should be 1.0.
+    @one.watchers << actual
+    @one.watchers << predicted
+    assert_equal 1.0, NearestNeighbors.accuracy(actual, predicted)
+  end
+
+  def test_accuracy_negatives
+    actual = Watcher.new '1'
+    predicted = Watcher.new '2'
+
+    # No matches should be -1.0.
+    @one.watchers << predicted
+    assert_equal -1.0, NearestNeighbors.accuracy(actual, predicted)
+
+    # Only 1 / 2 predicted repositories was correct.
+    @one.watchers << actual
+    @two.watchers << predicted
+    assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
+
+    three = Repository.new '3', 'user_c/hey', '2009-04-09'
+    four = Repository.new '4', 'user_d/hmm', '2009-05-13'
+    three.watchers << predicted
+    four.watchers << predicted
+
+    # Only 1 / 4 predicted repositories was correct.
+    assert_equal 0.25, NearestNeighbors.accuracy(actual, predicted)
+
+    # Now we're back to 2 / 4 predicted repositories being correct. 
+    @two.watchers << actual
+    assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
+  end
+
+  def test_accuracy_positives
+    actual = Watcher.new '1'
+    predicted = Watcher.new '2'
+
+    # No matches should be 0.0.
+    @one.watchers << actual
+    assert_equal 0.0, NearestNeighbors.accuracy(actual, predicted)
+
+    # Only predicted 1 / 2 repositories correctly.
+    @two.watchers << actual
+    @two.watchers << predicted
+    assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
+
+    three = Repository.new '3', 'user_c/hey', '2009-04-09'
+    four = Repository.new '4', 'user_d/hmm', '2009-05-13'
+    three.watchers << actual
+    four.watchers << actual
+
+    # Only predicted 1 / 4 repositories correctly.
+    assert_equal 0.25, NearestNeighbors.accuracy(actual, predicted)
+
+    # Now we're back to predicting 2 / 4 repositories correctly.
+    @one.watchers << predicted
+    assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
+  end
+
   private
 
   def ensure_symmetry(expected, one=@one, two=@two)
