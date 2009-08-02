@@ -49,7 +49,7 @@ class DataLoaderTest < Test::Unit::TestCase
     expected_data_labels = ['user_id']
     expected_data_items = [['1'], ['5']]
 
-    data_set = DataLoader.load_predictings('data/predictings.txt')
+    data_set = DataLoader.load_predictings('data')
 
     assert_equal expected_data_labels, data_set.data_labels
     assert_equal expected_data_items, data_set.data_items

@@ -80,7 +80,7 @@ class WatcherTest < Test::Unit::TestCase
     assert first.hash == second.hash
   end
 
-  def test_from_data_set
+  def test_from_data_set_with_repositories
     data_set = DataLoader.load_watchings('data')
 
     w1 = Watcher.new('1')
@@ -102,6 +102,19 @@ class WatcherTest < Test::Unit::TestCase
     assert_equal w1.repositories, actual.values[0].repositories
     assert_equal w2.repositories, actual.values[1].repositories
     assert_equal w3.repositories, actual.values[2].repositories
+  end
+
+  def test_from_data_set_without_repositories
+    data_set = DataLoader.load_predictings('data')
+
+    w1 = Watcher.new('1')
+    w2 = Watcher.new('5')
+
+    actual = Watcher.from_data_set(data_set)
+    assert_equal({'1' => w1, '5' => w2}, actual)
+
+    assert actual.values[0].repositories.empty?
+    assert actual.values[1].repositories.empty?
   end
 
 end

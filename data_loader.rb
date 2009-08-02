@@ -51,11 +51,11 @@ class DataLoader
     repositories
   end
 
-  def self.load_predictings(data_file='data/test.txt')
+  def self.load_predictings(data_dir='data')
     data_labels = ['user_id']
     data_items = []
 
-    IO.foreach(data_file) do |line|
+    IO.foreach(File.join(data_dir, 'test.txt')) do |line|
       data_items << [line.strip]
     end
 

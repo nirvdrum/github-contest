@@ -54,9 +54,11 @@ class Watcher
       user_id, repo_id = sample
 
       watchers[user_id] ||= Watcher.new user_id
-      repositories[repo_id] ||= Repository.new repo_id
 
-      watchers[user_id].repositories << repositories[repo_id]
+      unless repo_id.nil?
+        repositories[repo_id] ||= Repository.new repo_id
+        watchers[user_id].repositories << repositories[repo_id]
+      end 
     end
 
     watchers
