@@ -23,7 +23,16 @@ class WatcherTest < Test::Unit::TestCase
     @watcher.repositories << one
     @watcher.repositories << two
 
+    # Make sure the repositories set was updated properly.
     assert_equal [one, two], @watcher.repositories
+
+    # Make sure a repository can only appear once.
+    @watcher.repositories << one
+    assert_equal [one, two], @watcher.repositories
+
+    # Make sure the bi-directional relationship was established.
+    assert_equal [@watcher], one.watchers
+    assert_equal [@watcher], two.watchers
   end
 
   def test_to_s

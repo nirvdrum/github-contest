@@ -1,3 +1,17 @@
+# Manages bi-directional relationships between Watcher and Repository instances.  Also ensures
+# set semantics of repository list.
+class RepositorySet < Array
+  attr_accessor :watcher
+
+  def <<(repository)
+    unless include?(repository)
+      super repository
+
+      repository.watchers << watcher
+    end
+  end
+end
+
 class Watcher
 
   attr_reader :id, :repositories
@@ -5,7 +19,8 @@ class Watcher
   def initialize(id)
     @id = id
 
-    @repositories = []
+    @repositories = RepositorySet.new
+    @repositories.watcher = self
   end
 
   def ==(other)
