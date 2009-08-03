@@ -1,3 +1,5 @@
+require 'set'
+
 class NearestNeighbors
 
   attr_reader :training_repositories, :training_watchers
@@ -118,8 +120,7 @@ class NearestNeighbors
     @test_instances.each do |user_id, watcher|
       results[user_id] = {}
 
-      puts "knn-evaluate: Processing watcher #{user_id} (#{count + 1} / #{@test_instances.size}): #{Time.now.to_s}"
-      count += 1
+
       # See if we have any training instances.  If not, we really can't guess anything.
       watcher = @training_watchers[user_id]
       next if watcher.nil?
@@ -127,9 +128,21 @@ class NearestNeighbors
       watcher_repo_progress = 0
       # For each observed repository in the training data . . .
       watcher.repositories.each do |watcher_repo|
-        training_repo_progress = 0
+
+        # Build up a set of repositories to compare against.
+        to_check = []
+        @training_repositories[watcher_repo.id].watchers.each do |w|
+          next if w == watcher
+
+          to_check += @training_watchers[w.id].repositories unless @training_watchers[w.id].nil?
+        end
+        to_check = Set.new to_check
+
+        puts "knn-evaluate: Processing watcher #{user_id} (#{count + 1}/#{@test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size}): #{Time.now.to_s}"            
+
         # Compare against all other repositories to calculate the Euclidean distance between them.
-        @training_repositories.each do |training_repo_id, training_repo|
+        training_repo_progress = 0
+        to_check.each do |training_repo|
          # puts "Processing #{watcher_repo_progress + 1} / #{watcher.repositories.size} - #{training_repo_progress + 1} / #{@training_repositories.size}: #{Time.now.to_s}"
           training_repo_progress += 1
 
@@ -148,6 +161,8 @@ class NearestNeighbors
 
         watcher_repo_progress += 1
       end
+
+      count += 1
     end
 
     File.open(distance_cache_file, 'w') do |file|
@@ -158,8 +173,11 @@ class NearestNeighbors
     results.each do |user_id, distances|
       w = Watcher.new user_id
 
-      distances.each do |distance, repo|
-        w.repositories << repo
+      sorted_distances = distances.keys.sort {|x,y| y <=> x}
+      upper_bound = [10, sorted_distances.size].min
+
+      sorted_distances[0...upper_bound].each do |key|
+        w.repositories << distances[key]
       end
 
       ret << w
