@@ -113,7 +113,7 @@ class Watcher
       end
       count += 1
 
-      break if count == 10000
+      break if count == 20000
     end
   end
 
