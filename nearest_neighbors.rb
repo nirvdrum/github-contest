@@ -29,6 +29,7 @@ class NearestNeighbors
 
   # Calculates accuracy between actual and predicted watchers.
   def self.accuracy(actual, predicted)
+    return -1.0 if actual.nil? || predicted.nil?
     return 1.0 if actual.repositories.empty? && predicted.repositories.empty?
     return -1.0 if actual.repositories.empty? && !predicted.repositories.empty?
     return 0.0 if actual.repositories.empty? || predicted.repositories.empty?
@@ -88,14 +89,14 @@ class NearestNeighbors
     puts "knn-init: Pruned training watchers: #{training_watchers.size}"
 
     # Repositories with only one watcher are not very useful.
-    puts "knn-init: Pruning repositories: #{Time.now.to_s}"
-    @training_repositories.each do |repo_id, repo|
-      if repo.watchers.size == 1
-        @training_repositories.delete(repo_id)
+    #puts "knn-init: Pruning repositories: #{Time.now.to_s}"
+    #@training_repositories.each do |repo_id, repo|
+    #  if repo.watchers.size == 1
+    #    @training_repositories.delete(repo_id)
 
-        repo.watchers.each {|watcher| watcher.repositories.delete(repo)}
-      end 
-    end
+    #    repo.watchers.each {|watcher| watcher.repositories.delete(repo)}
+    #  end
+    #end
     puts "knn-init: Pruned training repositories: #{training_repositories.size}"
   end
 
@@ -158,7 +159,9 @@ class NearestNeighbors
       sorted_distances = distances.keys.sort {|x,y| y <=> x}
       upper_bound = [10, sorted_distances.size].min
 
+      puts "Distances for watcher #{w.id}" unless sorted_distances.empty?
       sorted_distances[0...upper_bound].each do |key|
+        puts ">>> #{key} => #{distances[key].to_s}"
         w.repositories << distances[key]
       end
 

@@ -79,6 +79,7 @@ File.open('results.txt', 'w') do |file|
 
   evaluations.each do |watcher|
     watcher.repositories << rails_repo if watcher.repositories.empty?
+    puts "Score (#{watcher.id}): #{NearestNeighbors.accuracy(knn.training_watchers[watcher.id], watcher)} -- #{watcher.to_s}"
     file.puts watcher.to_s
   end
 end
