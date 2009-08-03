@@ -11,6 +11,12 @@ class WatcherSet < Array
     end
   end
 
+  def delete(watcher)
+    super watcher
+
+    watcher.repositories.delete(repo) if watcher.repositories.include?(repo)
+  end
+
   def ==(other)
     self.size == other.size && (self - other).empty?
   end

@@ -94,6 +94,11 @@ class RepositoryTest < Test::Unit::TestCase
     # Make sure the bi-directional relationship was established.
     assert_equal [@repo], one.repositories
     assert_equal [@repo], two.repositories
+
+    # Make sure deletes maintain bi-directional relationship.
+    @repo.watchers.delete(one)
+    assert_equal [two], @repo.watchers
+    assert_equal [], one.repositories
   end
 
   def test_popular_family_member_by_watchers_single_repo

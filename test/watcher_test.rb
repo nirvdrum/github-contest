@@ -34,6 +34,11 @@ class WatcherTest < Test::Unit::TestCase
     # Make sure the bi-directional relationship was established.
     assert_equal [@watcher], one.watchers
     assert_equal [@watcher], two.watchers
+
+    # Make sure deletes maintain bi-directional relationship.
+    @watcher.repositories.delete(one)
+    assert_equal [two], @watcher.repositories
+    assert_equal [], one.watchers
   end
 
   def test_to_s
@@ -46,7 +51,7 @@ class WatcherTest < Test::Unit::TestCase
     assert_equal '1:1234', @watcher.to_s
 
     @watcher.repositories << two
-    assert_equal '1:1234\n1:2345', @watcher.to_s
+    assert_equal '1:1234,2345', @watcher.to_s
   end
 
   def test_equality

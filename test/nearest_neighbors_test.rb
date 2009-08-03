@@ -200,6 +200,41 @@ class NearestNeighborsTest < Test::Unit::TestCase
     end
   end
 
+  def test_score
+    test1_items = [
+            ['1', '2345'],
+            ['2', '2345'],
+            ['2', '6790']
+    ]
+    test_set1 = Ai4r::Data::DataSet.new(:data_items => test1_items)
+
+    test2_items = [
+            ['1', '6790'],
+            ['5', '6790'],
+            ['1', '1234']
+    ]
+    test_set2 = Ai4r::Data::DataSet.new(:data_items => test2_items)
+
+    repo = Repository.new '6790'
+    repo.watchers << Watcher.new('1')
+    recommendations = [
+            {
+                    '1' => {},
+                    '2' => {}
+            },
+            {
+                    '1' => {1.0 => repo},
+                    '5' => {}
+            }
+    ]
+
+    # Predicted 0 / 3 accurately.
+    assert_equal 0.0, NearestNeighbors.score(test_set1, recommendations[0])
+
+    # Predicted 1 / 3 accurately.
+    assert_equal 1.0 / 3.0, NearestNeighbors.score(test_set2, recommendations[1])
+  end
+
   private
 
   def ensure_symmetry(expected, one=@one, two=@two)
