@@ -103,16 +103,7 @@ class NearestNeighbors
     puts "knn-evaluate: Loading watchers: #{Time.now.to_s}"
     # Build up a list of watcher objects from the test set.
     @test_instances = Watcher.from_data_set test_set
-
-    distance_cache_file = 'tmp/distance_cache.dump'
-    distance_cache = {}
-    if File.exists?(distance_cache_file)
-      File.open(distance_cache_file) do |file|
-        distance_cache = Marshal.load file
-      end
-    end
-
-
+    
     results = {}
 
     count = 0
@@ -150,12 +141,7 @@ class NearestNeighbors
           next if training_repo.watchers.include?(watcher)
 
           # Calculate the distance, culling for absolute non-matches (i.e., distance == Float::MAX)
-          distance = distance_cache[distance_cache_key(watcher_repo, training_repo)]
-          if distance.nil?
-            distance = NearestNeighbors.euclidian_distance(watcher_repo, training_repo)
-            distance_cache[distance_cache_key(watcher_repo, training_repo)] = distance
-          end
-
+          distance = NearestNeighbors.euclidian_distance(watcher_repo, training_repo)
           results[user_id][distance] = training_repo unless distance == Float::MAX
         end
 
@@ -163,10 +149,6 @@ class NearestNeighbors
       end
 
       count += 1
-    end
-
-    File.open(distance_cache_file, 'w') do |file|
-      Marshal.dump distance_cache, file
     end
 
     ret = []
