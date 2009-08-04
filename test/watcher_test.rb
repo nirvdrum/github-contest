@@ -74,43 +74,17 @@ class WatcherTest < Test::Unit::TestCase
     first.repositories << Repository.new('1234', 'user_a/blah', '2009-05-23')
     assert first.eql?(second)
     assert first.hash == second.hash
-  end
+  end 
 
-  def test_from_data_set_with_repositories
-    data_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
+  def test_associate
+    watcher = Watcher.new '1'
+    repo = Repository.new '1234'
 
-    w1 = Watcher.new('1')
-    w2 = Watcher.new('2')
-    w3 = Watcher.new('5')
+    watcher.associate repo
 
-    r1 = Repository.new '1234'
-    r2 = Repository.new '2345'
-    r3 = Repository.new '6790'
-
-    w1.repositories << r1
-    w1.repositories << r2
-    w2.repositories << r2
-    w3.repositories << r3
-
-    actual = Watcher.from_data_set(data_set)
-    assert_equal({'1' => w1, '2' => w2, '5' => w3}, actual)
-
-    assert_equal w1.repositories, actual.values[0].repositories
-    assert_equal w2.repositories, actual.values[1].repositories
-    assert_equal w3.repositories, actual.values[2].repositories
-  end
-
-  def test_from_data_set_without_repositories
-    data_set = DataLoader.load_predictings("#{File.dirname(__FILE__)}/data")
-
-    w1 = Watcher.new('1')
-    w2 = Watcher.new('5')
-
-    actual = Watcher.from_data_set(data_set)
-    assert_equal({'1' => w1, '5' => w2}, actual)
-
-    assert actual.values[0].repositories.empty?
-    assert actual.values[1].repositories.empty?
+    # Check that bi-directional mappings are set up.
+    assert_equal [repo.id], watcher.repositories
+    assert_equal [watcher.id], repo.watchers
   end
 
 end

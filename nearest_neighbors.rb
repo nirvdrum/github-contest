@@ -43,7 +43,8 @@ class NearestNeighbors
 
   # Aggregates accuracies of evaluations of each item in the test set, yielding an overall accuracy score.
   def self.score(test_set, evaluations)
-    watchers = Watcher.from_data_set test_set
+    models = test_set.to_models
+    watchers = models[:watchers]
 
     number_correct = 0.0
 
@@ -51,7 +52,7 @@ class NearestNeighbors
     # was an accurate prediction.  Otherwise, no score awarded.
     evaluations.each do |user_id, scores|
       scores.each do |score, repo|
-        number_correct += 1 if watchers[user_id].repositories.include?(repo)
+        number_correct += 1 if watchers[user_id].repositories.include?(repo.id)
       end
     end
 
@@ -86,18 +87,13 @@ class NearestNeighbors
   end
 
   def initialize(training_set)
-    $LOG.info "knn-init: Loading watchers."
-    @training_watchers = Watcher.from_data_set training_set, 'knn_training'
+    $LOG.info "knn-init: Loading watchers and repositories."
+
+    models = training_set.to_models 'knn_training'
+    @training_watchers = models[:watchers]
+    @training_repositories = models[:repositories]
+
     $LOG.debug { "knn-init: Unique training users: #{@training_watchers.size}" }
-
-
-    $LOG.info "knn-init: Loading repositories."
-    @training_repositories = {}
-    @training_watchers.values.each do |watcher|
-      watcher.repositories.each do |repo|
-        @training_repositories[repo.id] ||= repo
-      end
-    end
     $LOG.debug { "knn-init: Unique training repositories: #{training_repositories.size}" }
 
     # Watchers watching a lot of repositories are not the norm.
@@ -109,13 +105,14 @@ class NearestNeighbors
   def evaluate(test_set)
     $LOG.info "knn-evaluate: Loading watchers."
     # Build up a list of watcher objects from the test set.
-    @test_instances = Watcher.from_data_set test_set
+    models = test_set.to_models
+    test_instances = models[:watchers]
     
     results = {}
 
     count = 0
     # For each watcher in the test set . . .
-    @test_instances.each do |user_id, watcher|
+    test_instances.each do |user_id, watcher|
       results[user_id] = {}
 
 
@@ -125,31 +122,31 @@ class NearestNeighbors
 
       watcher_repo_progress = 0
       # For each observed repository in the training data . . .
-      watcher.repositories.each do |watcher_repo|
+      watcher.repositories.each do |watcher_repo_id|
 
         # Build up a set of repositories to compare against.
         to_check = []
-        @training_repositories[watcher_repo.id].watchers.each do |w|
-          next if w == watcher
+        @training_repositories[watcher_repo_id].watchers.each do |w_id|
+          next if w_id == watcher.id
 
-          to_check += @training_watchers[w.id].repositories unless @training_watchers[w.id].nil?
+          to_check += @training_watchers[w_id].repositories unless @training_watchers[w_id].nil?
         end
         to_check = Set.new to_check
 
-        $LOG.debug { "knn-evaluate: Processing watcher #{user_id} (#{count + 1}/#{@test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size})" }
+        $LOG.debug { "knn-evaluate: Processing watcher #{user_id} (#{count + 1}/#{test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size})" }
 
         # Compare against all other repositories to calculate the Euclidean distance between them.
         training_repo_progress = 0
-        to_check.each do |training_repo|
+        to_check.each do |training_repo_id|
          # $LOG.debug "Processing #{watcher_repo_progress + 1} / #{watcher.repositories.size} - #{training_repo_progress + 1} / #{@training_repositories.size}"
           training_repo_progress += 1
 
           # Skip over repositories we already know the watcher belongs to.     
-          next if training_repo.watchers.include?(watcher)
+          next if @training_repositories[training_repo_id].watchers.include?(watcher.id)
 
           # Calculate the distance, culling for absolute non-matches (i.e., distance == Float::MAX)
-          distance = NearestNeighbors.euclidian_distance(watcher_repo, training_repo)
-          results[user_id][distance] = training_repo unless distance == Float::MAX
+          distance = NearestNeighbors.euclidian_distance(@training_repositories[watcher_repo_id], @training_repositories[training_repo_id])
+          results[user_id][distance] = training_repo_id unless distance == Float::MAX
         end
 
         watcher_repo_progress += 1
@@ -172,7 +169,7 @@ class NearestNeighbors
       if watcher.repositories.size > 100
         @training_watchers.delete(user_id)
 
-        watcher.repositories.each {|repo| repo.watchers.delete(watcher)}
+        watcher.repositories.each {|repo_id| @training_repositories[repo_id].watchers.delete(user_id)}
       end
     end
   end

@@ -152,4 +152,15 @@ class RepositoryTest < Test::Unit::TestCase
 
     assert_equal '2356:user_b/yo,2009-03-21,1234', with_parent.to_s
   end
+
+  def test_associate
+    watcher = Watcher.new '1'
+    repo = Repository.new '1234'
+
+    repo.associate watcher
+
+    # Check that bi-directional mappings are set up.
+    assert_equal [watcher.id], repo.watchers
+    assert_equal [repo.id], watcher.repositories
+  end
 end

@@ -25,6 +25,11 @@ class Watcher
     @repositories = RepositorySet.new
   end
 
+  def associate(repository)
+    @repositories << repository
+    repository.watchers << self
+  end
+
   def ==(other)
     return false if other.nil?
 
@@ -42,29 +47,6 @@ class Watcher
     else
       "#{id}:" + @repositories.collect { |repo| "#{repo}" }.join(',')
     end
-  end
-
-  def self.from_data_set(data_set,marshal_name=nil)
-
-    Cache.fetch("watcher_from_data_set_#{marshal_name}_#{rand}") do
-      watchers = {}
-      repositories = {}
-
-      # Discover watchers, repositories, and mappings.
-      data_set.data_items.each do |sample|
-        user_id, repo_id = sample
-
-        watchers[user_id] ||= Watcher.new user_id
-
-        unless repo_id.nil?
-          repositories[repo_id] ||= Repository.new repo_id
-          watchers[user_id].repositories << repositories[repo_id]
-        end
-      end
-
-      watchers
-    end
-
-  end
+  end 
 
 end

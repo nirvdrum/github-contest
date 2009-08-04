@@ -32,6 +32,11 @@ class Repository
     parent.children << self unless parent.nil?
   end
 
+  def associate(watcher)
+    @watchers << watcher
+    watcher.repositories << self
+  end
+
   def ==(other)
     return false if other.nil?
 

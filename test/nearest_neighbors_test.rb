@@ -84,24 +84,24 @@ class NearestNeighborsTest < Test::Unit::TestCase
     predicted = Watcher.new '2'
 
     # No matches should be -1.0.
-    @one.watchers << predicted
+    @one.associate predicted
     assert_equal -1.0, NearestNeighbors.accuracy(actual, predicted)
 
     # Only 1 / 2 predicted repositories was correct.
-    @one.watchers << actual
-    @two.watchers << predicted
+    @one.associate actual
+    @two.associate predicted
     assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
 
     three = Repository.new '3', 'user_c/hey', '2009-04-09'
     four = Repository.new '4', 'user_d/hmm', '2009-05-13'
-    three.watchers << predicted
-    four.watchers << predicted
+    three.associate predicted
+    four.associate predicted
 
     # Only 1 / 4 predicted repositories was correct.
     assert_equal 0.25, NearestNeighbors.accuracy(actual, predicted)
 
     # Now we're back to 2 / 4 predicted repositories being correct. 
-    @two.watchers << actual
+    @two.associate actual
     assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
   end
 
@@ -110,24 +110,24 @@ class NearestNeighborsTest < Test::Unit::TestCase
     predicted = Watcher.new '2'
 
     # No matches should be 0.0.
-    @one.watchers << actual
+    @one.associate actual
     assert_equal 0.0, NearestNeighbors.accuracy(actual, predicted)
 
     # Only predicted 1 / 2 repositories correctly.
-    @two.watchers << actual
-    @two.watchers << predicted
+    @two.associate actual
+    @two.associate predicted
     assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
 
     three = Repository.new '3', 'user_c/hey', '2009-04-09'
     four = Repository.new '4', 'user_d/hmm', '2009-05-13'
-    three.watchers << actual
-    four.watchers << actual
+    three.associate actual
+    four.associate actual
 
     # Only predicted 1 / 4 repositories correctly.
     assert_equal 0.25, NearestNeighbors.accuracy(actual, predicted)
 
     # Now we're back to predicting 2 / 4 repositories correctly.
-    @one.watchers << predicted
+    @one.associate predicted
     assert_equal 0.5, NearestNeighbors.accuracy(actual, predicted)
   end
 
@@ -150,8 +150,9 @@ class NearestNeighborsTest < Test::Unit::TestCase
 
     repositories = { r1.id => r1, r2.id => r2, r3.id => r3 }  
 
-    assert_equal Watcher.from_data_set(training_set), knn.training_watchers
-    assert_equal repositories, knn.training_repositories
+    expected = training_set.to_models
+    assert_equal expected[:watchers], knn.training_watchers
+    assert_equal expected[:repositories], knn.training_repositories
   end
 
   def test_evaluate
@@ -194,7 +195,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
       assert_equal expected[count].keys.size, evaluation.keys.size
       evaluation.each do |user_id, scores|
         scores.each do |score, repo|
-          assert_equal expected[count][user_id][score], repo.id
+          assert_equal expected[count][user_id][score], repo
         end
       end
 
