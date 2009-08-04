@@ -9,6 +9,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
   def setup
     @one = Repository.new '1234', 'user_a/yo', '2009-02-26'
     @two = Repository.new '4567', 'user_b/blah', '2009-03-17'
+
+    Cache.clear
   end
 
   def test_euclidian_distance_no_match

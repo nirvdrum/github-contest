@@ -14,3 +14,12 @@ require 'logger'
 $LOG = Logger.new(STDOUT)
 $LOG.level = Logger::FATAL
 $LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
+
+require 'cache'
+Cache.instance_eval { @@cache = Hash.new }
+
+Cache.instance_eval do
+  def self.clear
+    @@cache.clear
+  end
+end

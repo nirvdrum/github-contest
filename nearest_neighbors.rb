@@ -62,14 +62,12 @@ class NearestNeighbors
 
   def initialize(training_set)
     $LOG.info "knn-init: Loading watchers."
-
     @training_watchers = Watcher.from_data_set training_set, 'knn_training'
+    $LOG.debug { "knn-init: Unique training users: #{@training_watchers.size}" }
 
-    $LOG.info { "knn-init: Unique training users: #{@training_watchers.size}" }
-
-    @training_repositories = {}
 
     $LOG.info "knn-init: Loading repositories."
+    @training_repositories = {}
     @training_watchers.values.each do |watcher|
       watcher.repositories.each do |repo|
         @training_repositories[repo.id] ||= repo
@@ -79,13 +77,13 @@ class NearestNeighbors
 
     # Watchers watching a lot of repositories are not the norm.
     $LOG.info "knn-init: Pruning watchers."
-    @training_watchers.each do |user_id, watcher|
-      if watcher.repositories.size > 100
-        @training_watchers.delete(user_id)
+#    @training_watchers.each do |user_id, watcher|
+#      if watcher.repositories.size > 100
+#        @training_watchers.delete(user_id)
 
-        watcher.repositories.each {|repo| repo.watchers.delete(watcher)}
-      end 
-    end
+#        watcher.repositories.each {|repo| repo.watchers.delete(watcher)}
+#      end
+#    end
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
 
     # Repositories with only one watcher are not very useful.
@@ -152,23 +150,24 @@ class NearestNeighbors
       count += 1
     end
 
-    ret = []
-    results.each do |user_id, distances|
-      w = Watcher.new user_id
+#    ret = []
+#    results.each do |user_id, distances|
+#      w = Watcher.new user_id
 
-      sorted_distances = distances.keys.sort {|x,y| y <=> x}
-      upper_bound = [10, sorted_distances.size].min
+#      sorted_distances = distances.keys.sort {|x,y| y <=> x}
+#      upper_bound = [10, sorted_distances.size].min
 
-      $LOG.debug { "Distances for watcher #{w.id}" unless sorted_distances.empty? }
-      sorted_distances[0...upper_bound].each do |key|
-        $LOG.debug { ">>> #{key} => #{distances[key].to_s}" }
-        w.repositories << distances[key]
-      end
+#      $LOG.debug { "Distances for watcher #{w.id}" unless sorted_distances.empty? }
+#      sorted_distances[0...upper_bound].each do |key|
+#        $LOG.debug { ">>> #{key} => #{distances[key].to_s}" }
+#        w.repositories << distances[key]
+#      end
 
-      ret << w
-    end
+#      ret << w
+#    end
 
-    ret
+#    ret
+    results
   end
 
   private

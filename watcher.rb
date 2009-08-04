@@ -54,7 +54,7 @@ class Watcher
 
   def self.from_data_set(data_set,marshal_name=nil)
 
-    Cache.fetch("watcher_from_data_set_#{marshal_name}") do
+    Cache.fetch("watcher_from_data_set_#{marshal_name}_#{rand}") do
       watchers = {}
       repositories = {}
 

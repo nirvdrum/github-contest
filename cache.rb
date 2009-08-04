@@ -17,6 +17,6 @@ class Cache
     end
 
     value
-  end
+  end 
 
 end
