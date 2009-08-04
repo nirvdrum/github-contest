@@ -1,20 +1,13 @@
-# Manages bi-directional relationships between Watcher and Repository instances.  Also ensures
-# set semantics of repository list.
+# Ensures set semantics of repository list and handle coercion of strings and repositories.
 class RepositorySet < Array
-  attr_accessor :watcher
-
   def <<(repository)
-    unless include?(repository)
-      super repository
+    id = repository.is_a?(Repository) ? repository.id : repository
 
-      repository.watchers << watcher
-    end
+    super id unless include?(id)
   end
 
   def delete(repository)
-    super repository
-
-    repository.watchers.delete(watcher) if repository.watchers.include?(watcher)
+    repository.is_a?(Repository) ? super(repository.id) : repository
   end
 
   def ==(other)
@@ -30,7 +23,6 @@ class Watcher
     @id = id
 
     @repositories = RepositorySet.new
-    @repositories.watcher = self
   end
 
   def ==(other)
@@ -48,7 +40,7 @@ class Watcher
     if @repositories.empty?
       "#{id}"
     else
-      "#{id}:" + @repositories.collect { |repo| "#{repo.id}" }.join(',')
+      "#{id}:" + @repositories.collect { |repo| "#{repo}" }.join(',')
     end
   end
 

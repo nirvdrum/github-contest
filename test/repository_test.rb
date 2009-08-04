@@ -85,20 +85,11 @@ class RepositoryTest < Test::Unit::TestCase
     @repo.watchers << two
 
     # Make sure the watchers list was populated correctly.
-    assert_equal [one, two], @repo.watchers
+    assert_equal [one.id, two.id], @repo.watchers
 
     # Make sure a watcher can only appear once.
     @repo.watchers << one
-    assert_equal [one, two], @repo.watchers
-
-    # Make sure the bi-directional relationship was established.
-    assert_equal [@repo], one.repositories
-    assert_equal [@repo], two.repositories
-
-    # Make sure deletes maintain bi-directional relationship.
-    @repo.watchers.delete(one)
-    assert_equal [two], @repo.watchers
-    assert_equal [], one.repositories
+    assert_equal [one.id, two.id], @repo.watchers
   end
 
   def test_popular_family_member_by_watchers_single_repo
