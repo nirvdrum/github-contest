@@ -61,24 +61,24 @@ class NearestNeighbors
   end
 
   def initialize(training_set)
-    puts "knn-init: Loading watchers: #{Time.now.to_s}"
+    $LOG.info "knn-init: Loading watchers."
 
     @training_watchers = Watcher.from_data_set training_set, 'knn_training'
 
-    puts "knn-init: Unique training users: #{@training_watchers.size}"
+    $LOG.info { "knn-init: Unique training users: #{@training_watchers.size}" }
 
     @training_repositories = {}
 
-    puts "knn-init: Loading repositories: #{Time.now.to_s}"
+    $LOG.info "knn-init: Loading repositories."
     @training_watchers.values.each do |watcher|
       watcher.repositories.each do |repo|
         @training_repositories[repo.id] ||= repo
       end
     end
-    puts "knn-init: Unique training repositories: #{training_repositories.size}"
+    $LOG.debug { "knn-init: Unique training repositories: #{training_repositories.size}" }
 
     # Watchers watching a lot of repositories are not the norm.
-    puts "knn-init: Pruning watchers: #{Time.now.to_s}"
+    $LOG.info "knn-init: Pruning watchers."
     @training_watchers.each do |user_id, watcher|
       if watcher.repositories.size > 100
         @training_watchers.delete(user_id)
@@ -86,10 +86,10 @@ class NearestNeighbors
         watcher.repositories.each {|repo| repo.watchers.delete(watcher)}
       end 
     end
-    puts "knn-init: Pruned training watchers: #{training_watchers.size}"
+    $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
 
     # Repositories with only one watcher are not very useful.
-    #puts "knn-init: Pruning repositories: #{Time.now.to_s}"
+    #$LOG.debug "knn-init: Pruning repositories."
     #@training_repositories.each do |repo_id, repo|
     #  if repo.watchers.size == 1
     #    @training_repositories.delete(repo_id)
@@ -97,11 +97,11 @@ class NearestNeighbors
     #    repo.watchers.each {|watcher| watcher.repositories.delete(repo)}
     #  end
     #end
-    puts "knn-init: Pruned training repositories: #{training_repositories.size}"
+    $LOG.debug { "knn-init: Pruned training repositories: #{training_repositories.size}" }
   end
 
   def evaluate(test_set)
-    puts "knn-evaluate: Loading watchers: #{Time.now.to_s}"
+    $LOG.info "knn-evaluate: Loading watchers."
     # Build up a list of watcher objects from the test set.
     @test_instances = Watcher.from_data_set test_set
     
@@ -130,12 +130,12 @@ class NearestNeighbors
         end
         to_check = Set.new to_check
 
-        puts "knn-evaluate: Processing watcher #{user_id} (#{count + 1}/#{@test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size}): #{Time.now.to_s}"            
+        $LOG.debug { "knn-evaluate: Processing watcher #{user_id} (#{count + 1}/#{@test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size})" }
 
         # Compare against all other repositories to calculate the Euclidean distance between them.
         training_repo_progress = 0
         to_check.each do |training_repo|
-         # puts "Processing #{watcher_repo_progress + 1} / #{watcher.repositories.size} - #{training_repo_progress + 1} / #{@training_repositories.size}: #{Time.now.to_s}"
+         # $LOG.debug "Processing #{watcher_repo_progress + 1} / #{watcher.repositories.size} - #{training_repo_progress + 1} / #{@training_repositories.size}"
           training_repo_progress += 1
 
           # Skip over repositories we already know the watcher belongs to.     
@@ -159,9 +159,9 @@ class NearestNeighbors
       sorted_distances = distances.keys.sort {|x,y| y <=> x}
       upper_bound = [10, sorted_distances.size].min
 
-      puts "Distances for watcher #{w.id}" unless sorted_distances.empty?
+      $LOG.debug { "Distances for watcher #{w.id}" unless sorted_distances.empty? }
       sorted_distances[0...upper_bound].each do |key|
-        puts ">>> #{key} => #{distances[key].to_s}"
+        $LOG.debug { ">>> #{key} => #{distances[key].to_s}" }
         w.repositories << distances[key]
       end
 

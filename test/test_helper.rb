@@ -9,3 +9,8 @@ require 'ai4r'
 require 'pp'
 
 require 'ext/data_set'
+
+require 'logger'
+$LOG = Logger.new(STDOUT)
+$LOG.level = Logger::FATAL
+$LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
