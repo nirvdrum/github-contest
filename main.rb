@@ -7,31 +7,19 @@ require 'data_loader'
 require 'data_exporter'
 require 'ext/data_set'
 require 'nearest_neighbors'
+require 'cache'
 
 require 'logger'
 $LOG = Logger.new(STDOUT)
-$LOG.level = Logger::DEBUG
+$LOG.level = Logger::INFO
 $LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
 
 
 $LOG.info "Loading data."
 
-data_set = nil
-if File.exists?('tmp/data_set.dump')
-  File.open('tmp/data_set.dump') do |file|
-    data_set = Marshal.load file
-  end
-else
-  data_set = DataLoader.load_watchings
-
-  File.open('tmp/data_set.dump', 'w') do |file|
-    Marshal.dump data_set, file
-  end
-end 
-
-
+data_set = Cache.fetch('data_set') { DataLoader.load_watchings }
+predictings = Cache.fetch('predictings') { DataLoader.load_predictings }
 #repositories = DataLoader.load_repositories
-predictings = DataLoader.load_predictings
 
 #$LOG.info "Building classifier."
 #count = 0
@@ -57,28 +45,6 @@ knn = NearestNeighbors.new(data_set)
 $LOG.info "Evaluating."
 evaluations = knn.evaluate(predictings)
 
-#best_prediction = predictions.max { |x,y| x.size <=> y.size }
-#classifier = best_prediction.last.first
-#
-#$LOG.info "Printing prediction."
-#predictings.data_items.each_with_index do |predicting, i|
-#  predicting << classifier.eval(predictings[i])
-#end
-#predictings.data_labels << 'repo_ids'
-#
-#$LOG.info "Accuracy: #{data_set.class_frequency(predictings.data_items.first.last) * 100}%"
-#
-#repo_counts = {}
-#repositories.values.each do |repo|
-#  repo_counts[repo.watchers.size] ||= []
-#  repo_counts[repo.watchers.size] << repo
-#end
-#
-#$LOG.debug repo_counts.keys.max
-#repo_counts[repo_counts.keys.max].each {|repo| puts repo.name}
-#
-#$LOG.debug repositories["10"].watchers.size
-#
 
 $LOG.info "Printing results file."
 File.open('results.txt', 'w') do |file|

@@ -53,22 +53,11 @@ class Watcher
   end
 
   def self.from_data_set(data_set,marshal_name=nil)
-    watchers = {}
-    repositories = {}
-    mappings = {}
 
-    file_name = marshal_name.nil? ? nil : "tmp/watcher_from_data_set_#{marshal_name}.dump"
+    Cache.fetch("watcher_from_data_set_#{marshal_name}") do
+      watchers = {}
+      repositories = {}
 
-    # Try to load marshalled data first, if appropriate.
-    if !file_name.nil? && File.exists?(file_name)
-      File.open(file_name, 'r') do |file|
-        marshalled = Marshal.load file
-        watchers = marshalled[:watchers]
-        repositories = marshalled[:repositories]
-        mappings = marshalled[:mappings]
-      end
-
-    else
       # Discover watchers, repositories, and mappings.
       data_set.data_items.each do |sample|
         user_id, repo_id = sample
@@ -77,44 +66,13 @@ class Watcher
 
         unless repo_id.nil?
           repositories[repo_id] ||= Repository.new repo_id
-
-          mappings[user_id] ||= []
-          mappings[user_id] << repo_id
+          watchers[user_id].repositories << repositories[repo_id]
         end
       end
 
-      # Marshall the data out if appropriate.
-      if !file_name.nil?
-        File.open(file_name, 'w') do |file|
-          marshalled = {
-                  :watchers => watchers,
-                  :repositories => repositories,
-                  :mappings => mappings
-          }
-
-          Marshal.dump marshalled, file
-        end
-      end
+      watchers
     end
 
-    # Connect the watchers and repositories.  This needs to be a separate step because of the circular
-    # relationship between the two.  Marshalling does not like circular relationships.
-    connect_watchers_to_repositories watchers, repositories, mappings
-    watchers
-  end
-
-  private
-
-  def self.connect_watchers_to_repositories(watchers, repositories, mappings)
-    count = 0
-    mappings.each do |user_id, repository_ids|
-      repository_ids.each do |repo_id|
-        watchers[user_id].repositories << repositories[repo_id]
-      end
-      count += 1
-
-      break if count == 10000
-    end
   end
 
 end
