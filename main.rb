@@ -44,13 +44,13 @@ knn = NearestNeighbors.new(data_set)
 
 $LOG.info "Evaluating."
 evaluations = knn.evaluate(predictings)
-
+predictions = NearestNeighbors.predict(evaluations, 10)
 
 $LOG.info "Printing results file."
 File.open('results.txt', 'w') do |file|
   rails_repo = Repository.new '17'
 
-  evaluations.each do |watcher|
+  predictions.each do |watcher|
     watcher.repositories << rails_repo if watcher.repositories.empty?
     $LOG.debug "Score (#{watcher.id}): #{NearestNeighbors.accuracy(knn.training_watchers[watcher.id], watcher)} -- #{watcher.to_s}"
     file.puts watcher.to_s

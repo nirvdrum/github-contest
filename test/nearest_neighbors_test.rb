@@ -250,6 +250,32 @@ class NearestNeighborsTest < Test::Unit::TestCase
 
     assert_nil knn.training_watchers[to_prune.id]
   end
+
+  def test_predictions
+    r1 = Repository.new '1234'
+    r2 = Repository.new '2345'
+    r3 = Repository.new '6790'
+
+    evaluations = {
+            '1' => {0.2 => r2, 1.0 => r3, 0.7 => r1},
+            '5' => {0.5 => r1},
+            '2' => {}
+    }
+
+
+    w1 = Watcher.new '1'
+    w2 = Watcher.new '2'
+    w3 = Watcher.new '5'
+
+    # w1 will only have the two highest repository scores because we're setting k=2.
+    w1.repositories << Repository.new(r3.id)
+    w1.repositories << Repository.new(r1.id)
+
+    w3.repositories << Repository.new(r1.id)
+
+    # Test the predictions for the k=2 nearest neighbors.
+    assert_equal [w1, w2, w3], NearestNeighbors.predict(evaluations, 2)
+  end
   
   private
 

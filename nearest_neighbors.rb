@@ -60,6 +60,31 @@ class NearestNeighbors
     number_correct / total_repositories_to_predict
   end
 
+  def self.predict(evaluations, k)
+    ret = []
+
+    evaluations.each do |user_id, distances|
+      w = Watcher.new user_id
+
+      unless distances.empty?
+        sorted_distances = distances.keys.sort {|x, y| y <=> x}
+        upper_bound = [k, sorted_distances.size].min
+
+        $LOG.debug { "Distances for watcher #{w.id}" }
+
+        sorted_distances[0...upper_bound].each do |key|
+          $LOG.debug { ">>> #{key} => #{distances[key].to_s}" }
+
+          w.repositories << Repository.new(distances[key].id)
+        end
+      end
+
+      ret << w
+    end
+
+    ret
+  end
+
   def initialize(training_set)
     $LOG.info "knn-init: Loading watchers."
     @training_watchers = Watcher.from_data_set training_set, 'knn_training'
@@ -133,23 +158,6 @@ class NearestNeighbors
       count += 1
     end
 
-#    ret = []
-#    results.each do |user_id, distances|
-#      w = Watcher.new user_id
-
-#      sorted_distances = distances.keys.sort {|x,y| y <=> x}
-#      upper_bound = [10, sorted_distances.size].min
-
-#      $LOG.debug { "Distances for watcher #{w.id}" unless sorted_distances.empty? }
-#      sorted_distances[0...upper_bound].each do |key|
-#        $LOG.debug { ">>> #{key} => #{distances[key].to_s}" }
-#        w.repositories << distances[key]
-#      end
-
-#      ret << w
-#    end
-
-#    ret
     results
   end
 
