@@ -237,6 +237,20 @@ class NearestNeighborsTest < Test::Unit::TestCase
     assert_equal 1.0 / 3.0, NearestNeighbors.score(test_set2, recommendations[1])
   end
 
+  def test_prune_watchers
+    training_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
+    knn = NearestNeighbors.new(training_set)
+
+    # Stub out a watcher to prune.
+    to_prune = knn.training_watchers.first.last
+    repo = to_prune.repositories.first
+    to_prune.stubs(:repositories).returns([repo] * 101)
+
+    knn.send :prune_watchers
+
+    assert_nil knn.training_watchers[to_prune.id]
+  end
+  
   private
 
   def ensure_symmetry(expected, one=@one, two=@two)

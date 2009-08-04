@@ -77,25 +77,8 @@ class NearestNeighbors
 
     # Watchers watching a lot of repositories are not the norm.
     $LOG.info "knn-init: Pruning watchers."
-#    @training_watchers.each do |user_id, watcher|
-#      if watcher.repositories.size > 100
-#        @training_watchers.delete(user_id)
-
-#        watcher.repositories.each {|repo| repo.watchers.delete(watcher)}
-#      end
-#    end
+    prune_watchers
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
-
-    # Repositories with only one watcher are not very useful.
-    #$LOG.debug "knn-init: Pruning repositories."
-    #@training_repositories.each do |repo_id, repo|
-    #  if repo.watchers.size == 1
-    #    @training_repositories.delete(repo_id)
-
-    #    repo.watchers.each {|watcher| watcher.repositories.delete(repo)}
-    #  end
-    #end
-    $LOG.debug { "knn-init: Pruned training repositories: #{training_repositories.size}" }
   end
 
   def evaluate(test_set)
@@ -174,5 +157,15 @@ class NearestNeighbors
 
   def distance_cache_key(first, second)
     "#{[first.id, second.id].min}_#{[first.id, second.id].max}"
+  end
+
+  def prune_watchers
+    @training_watchers.each do |user_id, watcher|
+      if watcher.repositories.size > 100
+        @training_watchers.delete(user_id)
+
+        watcher.repositories.each {|repo| repo.watchers.delete(watcher)}
+      end
+    end
   end
 end
