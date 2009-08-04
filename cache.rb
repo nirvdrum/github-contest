@@ -11,9 +11,9 @@ class Cache
 
     begin
       @@cache[key] = value
-    rescue MemCache::MemCacheError
+    rescue MemCache::MemCacheError => e
       # Eat the exception since there's nothing we can do about it.
-      $LOG.error "Failed to store item in cache for key #{key}"
+      $LOG.error "Failed to store item in cache for key '#{key}': #{e}"
     end
 
     value

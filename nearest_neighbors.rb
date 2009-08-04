@@ -89,7 +89,7 @@ class NearestNeighbors
   def initialize(training_set)
     $LOG.info "knn-init: Loading watchers and repositories."
 
-    models = training_set.to_models 'knn_training'
+    models = training_set.to_models
     @training_watchers = models[:watchers]
     @training_repositories = models[:repositories]
 
@@ -115,7 +115,6 @@ class NearestNeighbors
     test_instances.each do |user_id, watcher|
       results[user_id] = {}
 
-
       # See if we have any training instances.  If not, we really can't guess anything.
       watcher = @training_watchers[user_id]
       next if watcher.nil?
@@ -125,13 +124,12 @@ class NearestNeighbors
       watcher.repositories.each do |watcher_repo_id|
 
         # Build up a set of repositories to compare against.
-        to_check = []
+        to_check = Set.new
         @training_repositories[watcher_repo_id].watchers.each do |w_id|
           next if w_id == watcher.id
 
           to_check += @training_watchers[w_id].repositories unless @training_watchers[w_id].nil?
         end
-        to_check = Set.new to_check
 
         $LOG.debug { "knn-evaluate: Processing watcher #{user_id} (#{count + 1}/#{test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size})" }
 

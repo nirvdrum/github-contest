@@ -1,4 +1,4 @@
-module DataSetUtilities
+module DataSetUtilities 
 
   def cross_validation(num_folds)
     folds = stratify(num_folds)
@@ -15,9 +15,9 @@ module DataSetUtilities
     folds
   end
 
-  def to_models(marshal_name=nil)
+  def to_models
 
-    Cache.fetch("watcher_from_data_set_#{marshal_name}_#{rand}") do
+    Cache.fetch("data_set_to_models_#{object_id}") do
       watchers = {}
       repositories = {}
 
