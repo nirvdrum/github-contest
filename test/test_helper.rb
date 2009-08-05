@@ -23,3 +23,6 @@ Cache.instance_eval do
     @@cache.clear
   end
 end
+
+require 'data_loader'
+DataLoader.instance_eval { @@data_dir = "#{File.dirname(__FILE__)}/data" }

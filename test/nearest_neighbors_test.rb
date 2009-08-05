@@ -148,7 +148,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
   end
 
   def test_initialize
-    training_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
+    training_set = DataLoader.load_watchings
+
     knn = NearestNeighbors.new(training_set)
 
     r1 = Repository.new '1234'
@@ -251,7 +252,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
   end
 
   def test_prune_watchers
-    training_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
+    training_set = DataLoader.load_watchings
     knn = NearestNeighbors.new(training_set)
 
     # Stub out a watcher to prune.

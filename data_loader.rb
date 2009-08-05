@@ -6,7 +6,7 @@ require 'watcher'
 
 class DataLoader
 
-  def self.load_watchings(data_dir='data')
+  def self.load_watchings
     data_labels = ['user_id', 'repo_id']
     data_items = []
 
@@ -18,7 +18,7 @@ class DataLoader
     data_set
   end
 
-  def self.load_repositories(data_dir='data')
+  def self.load_repositories
     repositories = {}
   
     relationships = {}
@@ -51,7 +51,7 @@ class DataLoader
     repositories
   end
 
-  def self.load_predictings(data_dir='data')
+  def self.load_predictings
     data_labels = ['user_id']
     data_items = []
 
@@ -61,5 +61,9 @@ class DataLoader
 
     data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => data_items)
     data_set
+  end
+
+  def self.data_dir
+    @@data_dir ||= 'data'
   end
 end

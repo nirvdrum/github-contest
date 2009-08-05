@@ -35,7 +35,7 @@ class DataSetUtilitiesTest < Test::Unit::TestCase
   end
 
   def test_to_models
-    data_set = DataLoader.load_watchings("#{File.dirname(__FILE__)}/data")
+    data_set = DataLoader.load_watchings
 
     w1 = Watcher.new('1')
     w2 = Watcher.new('2')
@@ -72,7 +72,7 @@ class DataSetUtilitiesTest < Test::Unit::TestCase
   end
 
   def test_to_models_without_repositories
-    data_set = DataLoader.load_predictings("#{File.dirname(__FILE__)}/data")
+    data_set = DataLoader.load_predictings
 
     w1 = Watcher.new('1')
     w2 = Watcher.new('5')

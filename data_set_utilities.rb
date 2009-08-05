@@ -35,8 +35,10 @@ module DataSetUtilities
         end
       end
 
+      # Map parent-child repo relationships.  Since raw_repositories may consist of repo <=> watchers or repo <=> repo
+      # that do not exist in the data set, make sure we always look up in the local repo list.
       raw_repositories.each do |repo_id, repo|
-        unless repo.parent.nil?
+        if !repositories[repo_id].nil? && !repo.parent.nil? && !repositories[repo.parent.id].nil?
           repositories[repo_id].parent = repositories[repo.parent.id]
         end
       end
