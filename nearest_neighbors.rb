@@ -12,7 +12,9 @@ class NearestNeighbors
 
     distance = Float::MAX
 
-    if first_different_watchers.empty? && second_different_watchers.empty?
+    if common_watchers.empty?
+      Float::MAX
+    elsif first_different_watchers.empty? && second_different_watchers.empty?
       distance = 0.0
     else 
       distance = 1.0 / [first_different_watchers.size, second_different_watchers.size].max

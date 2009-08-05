@@ -195,7 +195,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
                     '2' => {}
             },
             {
-                    '1' => {1.0 => '6790'},
+                    '1' => {0.5 => '6790'},
                     '5' => {}
             }
     ]
@@ -206,14 +206,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
 
       evaluation = knn.evaluate(test_set)
 
-      # We're returned repository objects, but the expectation only uses repository IDs.
-      # So, check the returned values against the IDs.
-      assert_equal expected[count].keys.size, evaluation.keys.size
-      evaluation.each do |user_id, scores|
-        scores.each do |score, repo|
-          assert_equal expected[count][user_id][score], repo
-        end
-      end
+      assert_equal expected[count], evaluation
 
       count += 1
     end
@@ -242,7 +235,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
                     '2' => {}
             },
             {
-                    '1' => {1.0 => repo},
+                    '1' => {1.0 => repo.id},
                     '5' => {}
             }
     ]
