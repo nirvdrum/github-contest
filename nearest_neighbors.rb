@@ -101,9 +101,9 @@ class NearestNeighbors
         $LOG.debug { "Distances for watcher #{w.id}" }
 
         sorted_distances[0...upper_bound].each do |key|
-          $LOG.debug { ">>> #{key} => #{distances[key].to_s}" }
+          $LOG.debug { ">>> #{key} => #{distances[key]}" }
 
-          w.repositories << Repository.new(distances[key].id)
+          w.repositories << Repository.new(distances[key])
         end
       end
 
@@ -153,12 +153,14 @@ class NearestNeighbors
 
         # Build up a set of repositories to compare against.
         to_check = Set.new
-        @training_repositories[training_repo_id].watchers.each do |training_repo_watcher_id|
-          next if training_repo_watcher_id == training_watcher.id
+        if @training_repositories[training_repo_id].watchers.size < 50
+          @training_repositories[training_repo_id].watchers.each do |training_repo_watcher_id|
+            next if training_repo_watcher_id == training_watcher.id
 
-          unless @training_watchers[training_repo_watcher_id].nil?
-            @training_watchers[training_repo_watcher_id].repositories.each do |repo|
-              to_check += [repo]
+            unless @training_watchers[training_repo_watcher_id].nil?
+              @training_watchers[training_repo_watcher_id].repositories.each do |repo|
+                to_check += [repo]
+              end
             end
           end
         end
