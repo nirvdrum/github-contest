@@ -41,9 +41,11 @@ class DataSetUtilitiesTest < Test::Unit::TestCase
     w2 = Watcher.new('2')
     w3 = Watcher.new('5')
 
-    r1 = Repository.new '1234'
-    r2 = Repository.new '2345'
-    r3 = Repository.new '6790'
+    r1 = Repository.new '1234', 'user_a/blah', '2009-02-26'
+    r2 = Repository.new '2345', 'user_b/yo', '2009-05-17'
+    r3 = Repository.new '6790', 'user_c/yo', '2009-03-19'
+
+    r2.parent = r3
 
     w1.associate r1
     w1.associate r2

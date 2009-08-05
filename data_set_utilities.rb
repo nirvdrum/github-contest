@@ -21,6 +21,8 @@ module DataSetUtilities
       watchers = {}
       repositories = {}
 
+      raw_repositories = DataLoader.load_repositories
+
       # Discover watchers, repositories, and mappings.
       data_items.each do |sample|
         user_id, repo_id = sample
@@ -28,8 +30,14 @@ module DataSetUtilities
         watchers[user_id] ||= Watcher.new user_id
 
         unless repo_id.nil?
-          repositories[repo_id] ||= Repository.new repo_id
+          repositories[repo_id] ||= Repository.new repo_id, raw_repositories[repo_id].name, raw_repositories[repo_id].created_at
           watchers[user_id].associate repositories[repo_id]
+        end
+      end
+
+      raw_repositories.each do |repo_id, repo|
+        unless repo.parent.nil?
+          repositories[repo_id].parent = repositories[repo.parent.id]
         end
       end
 

@@ -1,8 +1,10 @@
 require 'set'
 
+require 'neighbor_region'
+
 class NearestNeighbors
 
-  attr_reader :training_repositories, :training_watchers
+  attr_reader :training_repositories, :training_watchers, :training_regions
 
   # Calculates Euclidian distance between two repositories.
   def self.euclidian_distance(first, second)
@@ -129,6 +131,15 @@ class NearestNeighbors
     $LOG.info "knn-init: Pruning watchers."
     prune_watchers
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
+
+    @training_regions = {}
+    @training_repositories.each do |repo_id, repo|
+      repo_root = Repository.find_root repo
+
+      if @training_regions[repo_root.id].nil?
+        @training_regions[repo_root.id] = NeighborRegion.new repo
+      end
+    end
   end
 
   def evaluate(test_set)

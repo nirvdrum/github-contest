@@ -155,6 +155,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
     r2 = Repository.new '2345'
     r3 = Repository.new '6790'
 
+    r2.parent = r3
+
     w1 = Watcher.new '1'
     w2 = Watcher.new '2'
     w3 = Watcher.new '5'
@@ -169,6 +171,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
     expected = training_set.to_models
     assert_equal expected[:watchers], knn.training_watchers
     assert_equal expected[:repositories], knn.training_repositories
+    assert_equal ['1234', '6790'], knn.training_regions.keys
   end
 
   def test_evaluate
