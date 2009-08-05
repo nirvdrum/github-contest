@@ -114,10 +114,8 @@ class Repository
     ret
   end
 
-  private
-
   def self.find_root(repository)
     repository.parent.nil? ? repository : find_root(repository.parent)
-  end
+  end 
 
 end
