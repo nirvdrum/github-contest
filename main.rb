@@ -11,7 +11,7 @@ require 'cache'
 
 require 'logger'
 $LOG = Logger.new(STDOUT)
-$LOG.level = Logger::DEBUG
+$LOG.level = Logger::INFO
 $LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
 
 
@@ -21,23 +21,24 @@ data_set = Cache.fetch('data_set') { DataLoader.load_watchings }
 predictings = Cache.fetch('predictings') { DataLoader.load_predictings }
 #repositories = DataLoader.load_repositories
 
-#$LOG.info "Building classifier."
-#count = 0
-#predictions = {}
-#data_set.cross_validation(10) do |training_set, test_set|
-#  $LOG.debug ">>> Starting fold #{count + 1}."
-#  $LOG.debug "Training: #{Time.now.to_s} "
-#  classifier = NearestNeighbors.new(training_set)
-#
-#  $LOG.debug "Classifying."
-#  prediction = classifier.evaluation(test_set.to_test_set)
-#
-#  predictions[prediction] ||= []
-#  predictions[prediction] << classifier
-#
-#  $LOG.debug "Results for fold #{count + 1}: #{NearestNeighbors.score(test_set, prediction) * 100}%"
-#  count += 1
-#end
+$LOG.info "Building classifier."
+count = 0
+predictions = {}
+reduced_data_set = data_set.stratify(10).first
+reduced_data_set.cross_validation(10) do |training_set, test_set|
+  $LOG.info ">>> Starting fold #{count + 1}."
+  $LOG.info ">>> Training."
+  classifier = NearestNeighbors.new(training_set)
+
+  $LOG.info ">>> Classifying."
+  prediction = classifier.evaluate(test_set.to_test_set)
+
+  predictions[prediction] ||= []
+  predictions[prediction] << classifier
+
+  $LOG.info ">>> Results for fold #{count + 1}: #{NearestNeighbors.score(test_set, prediction) * 100}%"
+  count += 1
+end
 
 $LOG.info "Training."
 knn = NearestNeighbors.new(data_set)

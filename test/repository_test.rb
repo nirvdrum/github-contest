@@ -144,6 +144,30 @@ class RepositoryTest < Test::Unit::TestCase
     end
   end
 
+  def test_related
+    parent = Repository.new '12341', 'user_a/yo', '2009-02-26'
+    child = Repository.new '2345', 'user_b/yo', '2009-03-16'
+    grandchild_a = Repository.new '6790', 'user_c/yo', '2009-05-08'
+    grandchild_b = Repository.new '2368', 'user_c/yo', '2009-05-09'
+
+    # Establish family bond.
+    child.parent = parent
+    grandchild_a.parent = child
+    grandchild_b.parent = child
+
+    repositories = [parent]
+    non_related = Repository.new '367734', 'user_q/not_related', '2009-07-02'
+
+    repositories.each do |first|
+      # Make sure all the various players in the family tree are related.
+      repositories.each do |second|
+        assert first.related?(second)
+      end
+
+      assert !first.related?(non_related)
+    end
+  end
+  
   def test_to_s
     assert_equal '1234:user_a/yo,2009-02-26', @repo.to_s
 
@@ -162,5 +186,5 @@ class RepositoryTest < Test::Unit::TestCase
     # Check that bi-directional mappings are set up.
     assert_equal [watcher.id], repo.watchers
     assert_equal [repo.id], watcher.repositories
-  end
+  end  
 end

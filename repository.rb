@@ -32,6 +32,21 @@ class Repository
     parent.children << self unless parent.nil?
   end
 
+  def related?(other)
+    root = Repository.find_root(self)
+
+    queue = [root]
+
+    while !queue.empty?
+      repo = queue.pop
+      return true if repo == other
+
+      queue += repo.children
+    end
+
+    false
+  end
+
   def associate(watcher)
     @watchers << watcher
     watcher.repositories << self

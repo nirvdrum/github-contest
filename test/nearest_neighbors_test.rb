@@ -66,6 +66,22 @@ class NearestNeighborsTest < Test::Unit::TestCase
     ensure_symmetry(0.25, @one, three)
   end
 
+  def test_euclidian_distance_by_ancestry
+    @one.parent = @two
+
+    # No watchers, so baseline score is 1.0.
+    ensure_symmetry(1.0)
+
+    w1 = Watcher.new '1'
+    w2 = Watcher.new '2'
+
+    @one.associate w1
+    @two.associate w2
+
+    # Naive scoring is the inverse of the sum of watcher count for both repositories.  
+    ensure_symmetry(0.5)
+  end
+
   def test_accuracy
     actual = Watcher.new '1'
     predicted = Watcher.new '2'
