@@ -153,7 +153,7 @@ class NearestNeighbors
 
         # Build up a set of repositories to compare against.
         to_check = Set.new
-        if @training_repositories[training_repo_id].watchers.size < 50
+        if @training_repositories[training_repo_id].watchers.size < 100
           @training_repositories[training_repo_id].watchers.each do |training_repo_watcher_id|
             next if training_repo_watcher_id == training_watcher.id
 
