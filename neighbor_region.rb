@@ -18,4 +18,12 @@ class NeighborRegion
     watchers
   end
 
+  def most_popular
+    @repositories.sort { |x,y| x.watchers.size <=> y.watchers.size }.last
+  end
+
+  def cut_point_count(other)
+    (watchers & other.watchers).size
+  end  
+
 end

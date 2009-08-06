@@ -144,6 +144,7 @@ class NearestNeighbors
 
   def evaluate(test_set)
     $LOG.info "knn-evaluate: Loading watchers."
+    
     # Build up a list of watcher objects from the test set.
     models = test_set.to_models
     test_instances = models[:watchers]
@@ -158,7 +159,10 @@ class NearestNeighbors
 
       # See if we have any training instances for the watcher.  If not, we really can't guess anything.
       training_watcher = @training_watchers[watcher.id]
-      next if training_watcher.nil?
+      if training_watcher.nil?
+        $LOG.warn "No training instances for watcher #{watcher.id}"
+        next
+      end
 
       # For each observed repository in the training data . . .
       watcher_repo_progress = 0
@@ -200,6 +204,22 @@ class NearestNeighbors
         end
 
         watcher_repo_progress += 1
+      end
+
+      ###################################
+      ### Handling repository regions ###
+      ###################################
+
+      test_regions = {}
+      training_watcher.repositories.each do |repo_id|
+        region = @training_regions[NeighborRegion.new(@training_repositories[repo_id]).id]
+
+        test_regions[repo_id] = region unless region.nil?
+      end
+
+      test_regions.each do |watched_id, region|
+        distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_popular)
+        results[watcher.id][distance] = region.id
       end
 
       test_watcher_count += 1

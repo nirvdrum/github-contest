@@ -207,6 +207,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
     count = 0
     data_set.cross_validation(2) do |training_set, test_set|
       knn = NearestNeighbors.new(training_set)
+      pp knn.training_regions
+      puts "Fucking shit up."
 
       evaluation = knn.evaluate(test_set)
 
