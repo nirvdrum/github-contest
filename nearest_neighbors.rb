@@ -74,9 +74,13 @@ class NearestNeighbors
       end
 
       distances.each do |distance, repo_id|
-        if watcher.repositories.include? repo_id
-          $LOG.info ">>> WOO HOO!!!! Distance for correct repo: #{distance}"
-        end
+        #if watcher.repositories.include? repo_id
+        #  $LOG.info ">>> WOO HOO!!!! Distance for correct repo: #{distance}"
+
+        #  if distance == Float::MAX
+        #    $LOG.info ">>>>>> Bad heuristic linking #{repo_id}"
+        #  end
+        #end
         
         number_correct += 1 if watcher.repositories.include?(repo_id)
       end
@@ -132,14 +136,27 @@ class NearestNeighbors
     prune_watchers
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
 
+    # Build up repository regions.
+    $LOG.info "knn-init: Building repository regions."
     @training_regions = {}
+    @watchers_to_regions = {}
     @training_repositories.each do |repo_id, repo|
       repo_root = Repository.find_root repo
 
-      if @training_regions[repo_root.id].nil?
+      existing_region = @training_regions[repo_root.id]
+      if existing_region.nil?
         @training_regions[repo_root.id] = NeighborRegion.new repo
+      else
+        existing_region.repositories << repo
+      end
+
+      # Store repo in inverted list structure from watcher_id to regions.
+      repo.watchers.each do |watcher_id|
+        @watchers_to_regions[watcher_id] ||= Set.new
+        @watchers_to_regions[watcher_id] << @training_regions[repo_root.id]
       end
     end
+    $LOG.debug { "knn-init: Total regions: #{@training_regions.size}" }
   end
 
   def evaluate(test_set)
@@ -160,51 +177,10 @@ class NearestNeighbors
       # See if we have any training instances for the watcher.  If not, we really can't guess anything.
       training_watcher = @training_watchers[watcher.id]
       if training_watcher.nil?
-        $LOG.warn "No training instances for watcher #{watcher.id}"
+        # $LOG.warn "No training instances for watcher #{watcher.id}"
         next
       end
 
-      # For each observed repository in the training data . . .
-      watcher_repo_progress = 0
-      training_watcher.repositories.each do |training_repo_id|
-
-        # Build up a set of repositories to compare against.
-        to_check = Set.new
-        if @training_repositories[training_repo_id].watchers.size < 100
-          @training_repositories[training_repo_id].watchers.each do |training_repo_watcher_id|
-            next if training_repo_watcher_id == training_watcher.id
-
-            unless @training_watchers[training_repo_watcher_id].nil?
-              @training_watchers[training_repo_watcher_id].repositories.each do |repo|
-                to_check += [repo]
-              end
-            end
-          end
-        end
-
-        if to_check.size > 1000
-          $LOG.info { "knn-evaluate: Large to_check for test watcher #{watcher.id} on repo #{@training_repositories[training_repo_id].name} with #{@training_repositories[training_repo_id].watchers.size} watchers" }
-        end
-
-        $LOG.debug { "knn-evaluate: Processing watcher #{watcher.id} (#{test_watcher_count + 1}/#{test_instances.size})-(#{watcher_repo_progress + 1}/#{watcher.repositories.size}:#{to_check.size})" }
-
-        # Compare against all other repositories to calculate the Euclidean distance between them.
-        training_repo_progress = 0
-        to_check.each do |check_repo_id|
-         # $LOG.debug "Processing #{watcher_repo_progress + 1} / #{watcher.repositories.size} - #{training_repo_progress + 1} / #{@training_repositories.size}"
-          training_repo_progress += 1
-
-          # Skip over repositories we already know the watcher belongs to.     
-          next if @training_repositories[check_repo_id].watchers.include?(watcher.id)
-
-          # Calculate the distance, culling for absolute non-matches (i.e., distance == Float::MAX)
-          distance = NearestNeighbors.euclidian_distance(@training_repositories[check_repo_id], @training_repositories[check_repo_id])
-
-          results[watcher.id][distance] = check_repo_id unless distance == Float::MAX
-        end
-
-        watcher_repo_progress += 1
-      end
 
       ###################################
       ### Handling repository regions ###
@@ -220,6 +196,19 @@ class NearestNeighbors
       test_regions.each do |watched_id, region|
         distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_popular)
         results[watcher.id][distance] = region.id
+      end
+
+      related_regions = {}
+      test_regions.values.each do |test_region|
+        training_region_count = 0
+        @watchers_to_regions[watcher.id].each do |training_region|
+          $LOG.debug { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) - (#{training_region_count}/#{@watchers_to_regions[watcher.id].size}/#{test_regions.size})"}
+
+          distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_popular)
+          results[watcher.id][distance] = training_region.id
+
+          training_region_count += 1
+        end
       end
 
       test_watcher_count += 1
