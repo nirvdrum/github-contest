@@ -14,7 +14,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
   end
 
   def test_euclidian_distance_no_match
-    ensure_symmetry(Float::MAX)
+    ensure_symmetry(nil)
   end
 
   def test_euclidian_distance_by_watchers
@@ -24,19 +24,11 @@ class NearestNeighborsTest < Test::Unit::TestCase
 
     # No matches.
     @one.watchers << w1
-    ensure_symmetry(Float::MAX)
+    ensure_symmetry(nil)
 
     # Exact match.
     @two.watchers << w1
-    ensure_symmetry(0)
-
-    # Overlap with @one having more watchers.
-    @one.watchers << w2
-    ensure_symmetry(1)
-
-    # Overlap with @one and @two differing by 1 watcher.
-    @two.watchers << w3
-    ensure_symmetry(1)
+    ensure_symmetry(Math.cos(Math::PI / 2.0))
   end
 
   def test_euclidian_distance_by_watcher_size
@@ -62,8 +54,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
     three.watchers << w4
     three.watchers << w5
 
-    ensure_symmetry(1, @one, @two)
-    ensure_symmetry(0.25, @one, three)
+    ensure_symmetry(Math.cos(0.75 * (Math::PI / 2.0)), @one, @two)
+    ensure_symmetry(Math.cos((((1.0 / 1.0) + (1.0 / 5.0)) / 2.0) * (Math::PI / 2.0)), @one, three)
   end
 
   def test_euclidian_distance_by_ancestry
@@ -186,7 +178,9 @@ class NearestNeighborsTest < Test::Unit::TestCase
     fold2_items = [
             ['1', '6790'],
             ['5', '6790'],
-            ['1', '1234']
+            ['3', '6790'],
+            ['1', '1234'],
+            ['5', '8324']
     ]
     fold2 = Ai4r::Data::DataSet.new(:data_items => fold2_items)
 
@@ -195,24 +189,23 @@ class NearestNeighborsTest < Test::Unit::TestCase
 
     expected = [
             {
-                    '1' => {},
+                    '1' => {'0.5' => Set.new(['8324'])},
                     '2' => {}
             },
             {
-                    '1' => {0.5 => '6790'},
-                    '5' => {}
+                    '1' => {},
+                    '5' => {},
+                    '3' => {}
             }
     ]
 
     count = 0
     data_set.cross_validation(2) do |training_set, test_set|
       knn = NearestNeighbors.new(training_set)
-      pp knn.training_regions
-      puts "Fucking shit up."
 
       evaluation = knn.evaluate(test_set)
 
-      assert_equal expected[count], evaluation
+      assert_equal expected[count], evaluation, "Comparison failed for count #{count}"
 
       count += 1
     end

@@ -12,14 +12,16 @@ class NearestNeighbors
     first_different_watchers = first.watchers - second.watchers
     second_different_watchers = second.watchers - first.watchers
 
-    distance = Float::MAX
+    distance = nil
+
+    if first == second
+      return nil
+    end
 
     if common_watchers.empty?
-      Float::MAX
-    elsif first_different_watchers.empty? && second_different_watchers.empty?
-      distance = 0.0
+      nil
     else 
-      distance = 1.0 / [first_different_watchers.size, second_different_watchers.size].max
+      distance = Math.cos((((common_watchers.size / first.watchers.size.to_f) + (common_watchers.size / second.watchers.size.to_f)) / 2.0) * (Math::PI / 2.0))
     end
 
     if first.related? second
@@ -193,19 +195,34 @@ class NearestNeighbors
         test_regions[repo_id] = region unless region.nil?
       end
 
+      # Calculate the distance between the representative repo for the region (i.e., the root of the hierarchy)
+      # to the the most popular repo in the region.
       test_regions.each do |watched_id, region|
         distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_popular)
-        results[watcher.id][distance] = region.id
+    
+        unless distance.nil?
+          results[watcher.id][distance.to_s] ||= Set.new
+          results[watcher.id][distance.to_s] << region.most_popular.id
+        end
       end
 
+      # Calculate the distance between the repository regions we know the test watcher is in, to every other
+      # region in the training data.
       related_regions = {}
       test_regions.values.each do |test_region|
         training_region_count = 0
-        @watchers_to_regions[watcher.id].each do |training_region|
+        @training_regions.values.each do |training_region|
           $LOG.debug { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) - (#{training_region_count}/#{@watchers_to_regions[watcher.id].size}/#{test_regions.size})"}
 
+          # Skip repositories that we already know the user belongs to.
+          next if training_region.most_popular.watchers.include?(watcher.id)
+
           distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_popular)
-          results[watcher.id][distance] = training_region.id
+
+          unless distance.nil?
+            results[watcher.id][distance.to_s] ||= Set.new
+            results[watcher.id][distance.to_s] << training_region.most_popular.id
+          end
 
           training_region_count += 1
         end
