@@ -26,6 +26,7 @@ class DataLoaderTest < Test::Unit::TestCase
     a = Repository.new '1234', 'user_a/blah', '2009-02-26'
     b = Repository.new '2345', 'user_b/yo', '2009-05-17'
     c = Repository.new '6790', 'user_c/yo', '2009-03-19'
+    d = Repository.new '8324', 'user_d/hmm', '2009-04-16'
 
     b.parent = c
 
@@ -38,7 +39,8 @@ class DataLoaderTest < Test::Unit::TestCase
     expected = {
             '1234' => a,
             '2345' => b,
-            '6790' => c
+            '6790' => c,
+            '8324' => d
     }
 
     assert_equal expected, DataLoader.load_repositories
