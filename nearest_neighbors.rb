@@ -75,16 +75,18 @@ class NearestNeighbors
         next
       end
 
-      distances.each do |distance, repo_id|
-        #if watcher.repositories.include? repo_id
-        #  $LOG.info ">>> WOO HOO!!!! Distance for correct repo: #{distance}"
+      distances.values.each do |repositories|
+        repositories.each do |repo_id|
+          #if watcher.repositories.include? repo_id
+          #  $LOG.info ">>> WOO HOO!!!! Distance for correct repo: #{distance}"
 
-        #  if distance == Float::MAX
-        #    $LOG.info ">>>>>> Bad heuristic linking #{repo_id}"
-        #  end
-        #end
-        
-        number_correct += 1 if watcher.repositories.include?(repo_id)
+          #  if distance == Float::MAX
+          #    $LOG.info ">>>>>> Bad heuristic linking #{repo_id}"
+          #  end
+          #end
+
+          number_correct += 1 if watcher.repositories.include?(repo_id)
+        end
       end
 
       #no_distances = watcher.repositories - distances.values
@@ -105,15 +107,18 @@ class NearestNeighbors
       w = Watcher.new user_id
 
       unless distances.empty?
-        sorted_distances = distances.keys.sort {|x, y| y <=> x}
-        upper_bound = [k, sorted_distances.size].min
-
         $LOG.debug { "Distances for watcher #{w.id}" }
+
+        # Select the max(k, # scored) best distances.
+        sorted_distances = distances.keys.sort {|x, y| x.to_f <=> y.to_f}
+        upper_bound = [k, sorted_distances.size].min
 
         sorted_distances[0...upper_bound].each do |key|
           $LOG.debug { ">>> #{key} => #{distances[key]}" }
 
-          w.repositories << Repository.new(distances[key])
+          distances[key].each do |repo_id|
+            w.repositories << repo_id
+          end
         end
       end
 

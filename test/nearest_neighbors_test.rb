@@ -234,7 +234,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
                     '2' => {}
             },
             {
-                    '1' => {1.0 => repo.id},
+                    '1' => {'1.0' => Set.new([repo.id])},
                     '5' => {}
             }
     ]
@@ -266,8 +266,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
     r3 = Repository.new '6790'
 
     evaluations = {
-            '1' => {0.2 => r2, 1.0 => r3, 0.7 => r1},
-            '5' => {0.5 => r1},
+            '1' => {'0.2' => Set.new([r2]), '1.0' => Set.new([r3]), '0.7' => Set.new([r1])},
+            '5' => {'0.5' => Set.new([r1])},
             '2' => {}
     }
 
@@ -276,14 +276,19 @@ class NearestNeighborsTest < Test::Unit::TestCase
     w2 = Watcher.new '2'
     w3 = Watcher.new '5'
 
-    # w1 will only have the two highest repository scores because we're setting k=2.
-    w1.repositories << Repository.new(r3.id)
+    # w1 will only have the two lowest repository distances because we're setting k=2.
+    w1.repositories << Repository.new(r2.id)
     w1.repositories << Repository.new(r1.id)
 
     w3.repositories << Repository.new(r1.id)
 
     # Test the predictions for the k=2 nearest neighbors.
-    assert_equal [w1, w2, w3], NearestNeighbors.predict(evaluations, 2)
+    actual = NearestNeighbors.predict(evaluations, 2)
+    assert_equal [w1, w2, w3], actual
+
+    assert_equal w1.repositories, actual[0].repositories
+    assert_equal w2.repositories, actual[1].repositories
+    assert_equal w3.repositories, actual[2].repositories
   end
   
   private
