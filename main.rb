@@ -11,7 +11,7 @@ require 'cache'
 
 require 'logger'
 $LOG = Logger.new(STDOUT)
-$LOG.level = Logger::INFO
+$LOG.level = Logger::DEBUG
 $LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
 
 

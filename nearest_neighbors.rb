@@ -174,10 +174,10 @@ class NearestNeighbors
     results = {}
 
     # Prune out regions with small number of watchers.
-    related_regions = {}
-    @training_regions.each do |region_id, region|
-      related_regions[region_id] = region if region.watchers.size > 10
-    end
+    #related_regions = {}
+    #@training_regions.each do |region_id, region|
+    #  related_regions[region_id] = region if region.watchers.size > 10
+    #end
 
     # For each watcher in the test set . . .
     $LOG.info "knn-evaluate: Starting evaluations."
@@ -217,11 +217,13 @@ class NearestNeighbors
 
       # Calculate the distance between the repository regions we know the test watcher is in, to every other
       # region in the training data.
+      related_regions = @watchers_to_regions[watcher.id]
+      test_region_count = 0
       test_regions.values.each do |test_region|
-        test_region_count = 0
         training_region_count = 0
-        related_regions.values.each do |training_region|
+        related_regions.each do |training_region|
           $LOG.debug { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) - (#{test_region_count}/#{test_regions.size}):(#{training_region_count}/#{related_regions.size})"}
+          training_region_count += 1
 
           # Skip repositories that we already know the user belongs to.
           next if training_region.most_popular.watchers.include?(watcher.id)
@@ -232,8 +234,6 @@ class NearestNeighbors
             results[watcher.id][distance.to_s] ||= Set.new
             results[watcher.id][distance.to_s] << training_region.most_popular.id
           end
-
-          training_region_count += 1
         end
 
         test_region_count += 1
