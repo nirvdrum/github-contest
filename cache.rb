@@ -2,27 +2,24 @@ require 'memcache'
 
 class Cache
 
+  def self.cache_dir
+    @@cache_dir ||= 'cache'
+  end
+
   def self.fetch(key, &block)
-    begin
-      @@cache ||= MemCache.new('localhost:11211', :namespace => 'gh', :multithread => true)
+    @@cache ||= {}
 
-      return @@cache[key] unless @@cache[key].nil?
-    rescue MemCache::MemCacheError => e
-      # Eat the exception since there's nothing we can do about it.
-      $LOG.error "Failed to store item in cache for key '#{key}': #{e}"
-    end
+    # Return the cached value if already in memory.
+    return @@cache[key] unless @@cache[key].nil?
 
+    # Try to load from file.
+    @@cache[key] = File.open(File.join(cache_dir, key), 'rb'){ |io| Marshal.load(io) } rescue nil
+    return @@cache[key] unless @@cache[key].nil?
 
-    value = block.call
+    # Barring all else, perform the operation to obtain value to cache.
+    @@cache[key] = block.call
+    File.open(File.join(cache_dir, key), 'wb'){ |f| Marshal.dump(@@cache[key], f) }
 
-    begin
-      @@cache[key] = value
-    rescue MemCache::MemCacheError => e
-      # Eat the exception since there's nothing we can do about it.
-      $LOG.error "Failed to store item in cache for key '#{key}': #{e}"
-    end
-
-    value
-  end 
-
+    @@cache[key]
+  end
 end

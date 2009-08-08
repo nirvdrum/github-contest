@@ -8,26 +8,35 @@ class NearestNeighbors
 
   # Calculates Euclidian distance between two repositories.
   def self.euclidian_distance(first, second)
+    return nil if first == second
+
+    weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+
     common_watchers = first.watchers & second.watchers
     first_different_watchers = first.watchers - second.watchers
     second_different_watchers = second.watchers - first.watchers
 
-    distance = nil
+    distance = 0
 
-    if first == second
-      return nil
-    end
+    first_common_watchers_ratio = common_watchers.size / first.watchers.size.to_f
+    second_common_watchers_ratio = common_watchers.size / second.watchers.size.to_f
 
-    if common_watchers.empty?
-      nil
-    else 
-      distance = Math.cos((((common_watchers.size / first.watchers.size.to_f) + (common_watchers.size / second.watchers.size.to_f)) / 2.0) * (Math::PI / 2.0))
-    end
+    distance += (weights[0] * first_common_watchers_ratio)
+    distance += (weights[1] * second_common_watchers_ratio)
+    distance += (weights[2] * common_watchers.size)
+    distance += (weights[3] * first_different_watchers.size)
+    distance += (weights[4] * second_different_watchers.size)
 
+    # Divide by 2 to normalize between [0, 1].
+    # Multiply by Pi/2 to get half cycle of cosine function.  We only care about positive values and cosine
+    # is only positive between [0, Pi/2].
+    #distance += Math.cos(((first_common_watchers_ratio + second_common_watchers_ratio) / 2.0) * (Math::PI / 2.0))
+
+        
     if first.related? second
       # Distance is the inverse of the sum of watcher count for both repositories, which has in implicit
       # bias towards the most popular repositories by watcher size.
-      distance = 1.0 / [first.watchers.size + second.watchers.size, 1.0].max
+      #distance += (1.0 / [first.watchers.size + second.watchers.size, 1.0].max)
     end
 
     distance
@@ -71,7 +80,7 @@ class NearestNeighbors
       watcher = watchers[prediction.id]
 
       if watcher.nil?
-        $LOG.error "Got a nil user in evaluations for user id #{user_id}"
+        $LOG.error "Got a nil user in evaluations for user id #{watcher.id}"
         next
       end
 
@@ -95,7 +104,7 @@ class NearestNeighbors
 
     total_repositories_to_predict = watchers.values.inject(0) { |sum, watcher| sum + watcher.repositories.size }
 
-    number_correct / total_repositories_to_predict
+    number_correct / total_repositories_to_predict.to_f
   end
 
   def self.predict(evaluations, k)
@@ -198,6 +207,7 @@ class NearestNeighbors
       ### Handling repository regions ###
       ###################################
 
+      # Extract the regions we know the test watcher belongs to.
       test_regions = {}
       training_watcher.repositories.each do |repo_id|
         region = @training_regions[NeighborRegion.new(@training_repositories[repo_id]).id]
@@ -206,19 +216,24 @@ class NearestNeighbors
       end
 
       # Calculate the distance between the representative repo for the region (i.e., the root of the hierarchy)
-      # to the the most popular repo in the region.
+      # to the the most popular and most forked repos in the region.
       test_regions.each do |watched_id, region|
-        distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_popular)
-    
-        unless distance.nil?
-          results[watcher.id][distance.to_s] ||= Set.new
-          results[watcher.id][distance.to_s] << region.most_popular.id
+        popular_distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_popular)  
+        unless popular_distance.nil?
+          results[watcher.id][popular_distance.to_s] ||= Set.new
+          results[watcher.id][popular_distance.to_s] << region.most_popular.id
+        end
+
+        forked_distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_forked)
+        unless forked_distance.nil?
+          results[watcher.id][forked_distance.to_s] ||= Set.new
+          results[watcher.id][forked_distance.to_s] << region.most_forked.id
         end
       end
 
       # Calculate the distance between the repository regions we know the test watcher is in, to every other
       # region in the training data.
-      related_regions = @watchers_to_regions[watcher.id]
+      related_regions = @training_regions.values #@watchers_to_regions[watcher.id]
       test_region_count = 0
       test_regions.values.each do |test_region|
         training_region_count = 0
@@ -229,11 +244,16 @@ class NearestNeighbors
           # Skip repositories that we already know the user belongs to.
           next if training_region.most_popular.watchers.include?(watcher.id)
 
-          distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_popular)
+          popular_distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_popular)
+          unless popular_distance.nil?
+            results[watcher.id][popular_distance.to_s] ||= Set.new
+            results[watcher.id][popular_distance.to_s] << training_region.most_popular.id
+          end
 
-          unless distance.nil?
-            results[watcher.id][distance.to_s] ||= Set.new
-            results[watcher.id][distance.to_s] << training_region.most_popular.id
+          forked_distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_forked)
+          unless forked_distance.nil?
+            results[watcher.id][forked_distance.to_s] ||= Set.new
+            results[watcher.id][forked_distance.to_s] << training_region.most_forked.id
           end
         end
 

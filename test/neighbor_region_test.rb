@@ -78,6 +78,24 @@ class NeigborRegionTest < Test::Unit::TestCase
     assert_equal r2, region.most_popular
   end
 
+  def test_most_forked
+    r1 = Repository.new '1234'
+    r2 = Repository.new '2345'
+    r3 = Repository.new '6790'
+    r4 = Repository.new '8324'
+
+    r2.parent = r1
+    r3.parent = r2
+    r4.parent = r2
+
+    # r2 has the most forks and thus should be the most popular.
+    region = NeighborRegion.new r1
+    region.repositories << r2
+    region.repositories << r3
+    region.repositories << r4
+    assert_equal r2, region.most_forked
+  end
+
   def test_cut_point_count
     r1 = Repository.new '1234'
     r2 = Repository.new '2345'

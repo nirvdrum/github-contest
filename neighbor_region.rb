@@ -14,6 +14,8 @@ class NeighborRegion
     @repositories = Set.new [repository, root]
 
     memoize :most_popular
+    #memoize :most_forked
+    #memoize :cut_point_count
   end
 
   def watchers
@@ -26,6 +28,10 @@ class NeighborRegion
 
   def most_popular
     @repositories.sort { |x,y| x.watchers.size <=> y.watchers.size }.last
+  end
+
+  def most_forked
+    @repositories.sort { |x,y| x.children.size <=> y.children.size }.last
   end
 
   def cut_point_count(other)
