@@ -58,7 +58,7 @@ class NearestNeighbors
   end
 
   # Aggregates accuracies of evaluations of each item in the test set, yielding an overall accuracy score.
-  def self.score(test_set, evaluations)
+  def self.score(test_set, predictions)
     models = test_set.to_models
     watchers = models[:watchers]
 
@@ -66,27 +66,25 @@ class NearestNeighbors
 
     # Look at each predicted answer for each watcher.  If the prediction appears in the watcher's list, then it
     # was an accurate prediction.  Otherwise, no score awarded.
-    evaluations.each do |user_id, distances|
+    predictions.each do |prediction|
       #$LOG.info "Scoring user #{user_id}"
-      watcher = watchers[user_id]
+      watcher = watchers[prediction.id]
 
       if watcher.nil?
         $LOG.error "Got a nil user in evaluations for user id #{user_id}"
         next
       end
 
-      distances.values.each do |repositories|
-        repositories.each do |repo_id|
-          #if watcher.repositories.include? repo_id
-          #  $LOG.info ">>> WOO HOO!!!! Distance for correct repo: #{distance}"
+      prediction.repositories.each do |repo_id|
+        #if watcher.repositories.include? repo_id
+        #  $LOG.info ">>> WOO HOO!!!! Distance for correct repo: #{distance}"
 
-          #  if distance == Float::MAX
-          #    $LOG.info ">>>>>> Bad heuristic linking #{repo_id}"
-          #  end
-          #end
+        #  if distance == Float::MAX
+        #    $LOG.info ">>>>>> Bad heuristic linking #{repo_id}"
+        #  end
+        #end
 
-          number_correct += 1 if watcher.repositories.include?(repo_id)
-        end
+        number_correct += 1 if watcher.repositories.include?(repo_id)
       end
 
       #no_distances = watcher.repositories - distances.values
@@ -175,6 +173,12 @@ class NearestNeighbors
     
     results = {}
 
+    # Prune out regions with small number of watchers.
+    related_regions = {}
+    @training_regions.each do |region_id, region|
+      related_regions[region_id] = region if region.watchers.size > 10
+    end
+
     # For each watcher in the test set . . .
     $LOG.info "knn-evaluate: Starting evaluations."
     test_watcher_count = 0
@@ -213,11 +217,11 @@ class NearestNeighbors
 
       # Calculate the distance between the repository regions we know the test watcher is in, to every other
       # region in the training data.
-      related_regions = {}
       test_regions.values.each do |test_region|
+        test_region_count = 0
         training_region_count = 0
-        @training_regions.values.each do |training_region|
-          $LOG.debug { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) - (#{training_region_count}/#{@watchers_to_regions[watcher.id].size}/#{test_regions.size})"}
+        related_regions.values.each do |training_region|
+          $LOG.debug { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) - (#{test_region_count}/#{test_regions.size}):(#{training_region_count}/#{related_regions.size})"}
 
           # Skip repositories that we already know the user belongs to.
           next if training_region.most_popular.watchers.include?(watcher.id)
@@ -231,6 +235,8 @@ class NearestNeighbors
 
           training_region_count += 1
         end
+
+        test_region_count += 1
       end
 
       test_watcher_count += 1
