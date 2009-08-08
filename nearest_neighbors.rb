@@ -170,6 +170,7 @@ class NearestNeighbors
     # Build up a list of watcher objects from the test set.
     models = test_set.to_models
     test_instances = models[:watchers]
+    $LOG.info { "knn-evaluate: Total unique test watchers: #{test_instances.size}" }
     
     results = {}
 

@@ -1,4 +1,8 @@
+require 'memoize'
+
 class NeighborRegion
+
+  include Memoize
 
   attr_reader :id, :repositories
 
@@ -8,6 +12,8 @@ class NeighborRegion
     @id = root.id
 
     @repositories = Set.new [repository, root]
+
+    memoize :most_popular
   end
 
   def watchers

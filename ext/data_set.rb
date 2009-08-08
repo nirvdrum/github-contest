@@ -13,10 +13,10 @@ module Ai4r
       def stratify(num_folds)
         # Although the data will ultimately be sorted by class value, the entries within that class value should be
         # randomized to start.  Otherwise, stratification will always lead to the same resulting folds.
-        randomized = data_items.sort_by { rand }
+        randomized = data_items #.sort_by { rand }
 
         # Sort the data items by class so we can ensure the folds match the underlying distribution.
-        sorted = data_items.sort { |x,y| x.last <=> y.last }
+        sorted = randomized.sort { |x,y| x.last <=> y.last }
 
         # Split the sorted data into folds by grabbing every num_folds item out of the data.  This should ensure
         # that each fold matches the underlying data distribution.
@@ -33,7 +33,7 @@ module Ai4r
 
           # Randomize the data again to guard against classifiers that are prone to choosing the first
           # sample drawn from the data set.
-          folds << Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => fold.sort_by { rand })
+          folds << Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => fold)#.sort_by { rand })
         end
 
         folds

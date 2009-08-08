@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'ai4r'
+require 'memoize'
 
 require 'repository'
 require 'watcher'
@@ -19,8 +20,9 @@ class DataLoader
   end
 
   def self.load_repositories
-    repositories = {}
-  
+    @@repositories ||= {} 
+    return @@repositories unless @@repositories.empty?
+
     relationships = {}
 
     IO.foreach(File.join(data_dir, 'repos.txt')) do |line|
@@ -28,7 +30,7 @@ class DataLoader
       name, created_at, parent_id = repo_data.split(',')
 
       # Add the repository to the result hash.
-      repositories[repo_id] = Repository.new(repo_id, name, created_at)
+      @@repositories[repo_id] = Repository.new(repo_id, name, created_at)
 
       # Keep track of parent-child relationships.
       relationships[repo_id] = parent_id unless parent_id.nil?
@@ -36,7 +38,7 @@ class DataLoader
 
     # Now that all the repositories have been loaded, establish any parent-child relationships.
     relationships.each do |child_id, parent_id|
-      repositories[child_id].parent = repositories[parent_id]
+      @@repositories[child_id].parent = @@repositories[parent_id]
     end
 
     # Load in the watchers.
@@ -45,10 +47,10 @@ class DataLoader
       user_id, repo_id = line.strip.split(':')
       watcher = watchers[user_id] || Watcher.new(user_id)
       watchers[user_id] = watcher
-      repositories[repo_id].watchers << watcher
+      @@repositories[repo_id].watchers << watcher
     end
 
-    repositories
+    @@repositories
   end
 
   def self.load_predictings
