@@ -27,7 +27,7 @@ data_set = DataLoader.load_watchings
 #  classifier = NearestNeighbors.new(training_set)
 #
 #  $LOG.info ">>> Classifying."
-#  evaluations = classifier.evaluate(test_set.to_test_set)
+#  evaluations = classifier.evaluate(test_set)
 #  prediction = NearestNeighbors.predict(evaluations, 10)
 #  all_predictions = NearestNeighbors.predict(evaluations, 1000)
 #
@@ -63,7 +63,7 @@ data_set = DataLoader.load_watchings
 #  $LOG.info ">>> Actual repo was most forked: #{(most_forked_count / total_able_to_be_predicted.to_f) * 100}%"
 #
 #  count += 1
-#  break
+#  break if count == 1
 #end
 
 
@@ -71,34 +71,41 @@ data_set = DataLoader.load_watchings
 $LOG.info "Training."
 knn = NearestNeighbors.new(data_set)
 
-#$LOG.info "Evaluating."
-#predictings = DataLoader.load_predictings
-#evaluations = knn.evaluate(predictings)
-#predictions = NearestNeighbors.predict(evaluations, 10)
+$LOG.info "Evaluating."
+predictings = DataLoader.load_predictings
+evaluations = knn.evaluate(predictings)
+predictions = NearestNeighbors.predict(evaluations, 10)
 
 repos_by_popularity = []
 sorted_regions = knn.training_regions.values.sort { |x,y| y.most_popular.watchers.size <=> x.most_popular.watchers.size }
 repos_by_popularity = sorted_regions.collect {|x| x.most_popular.id}
 
 $LOG.info "Printing results file."
-#File.open('results.txt', 'w') do |file|
+File.open('results.txt', 'w') do |file|
 
   predictions.each do |watcher|
     # Add the ten most popular repositories that the user is not already a watcher of to his repo list if
     # we don't have any predictions.
     if watcher.repositories.empty?
-      added_repo_count = 0
-      repos_by_popularity.each do |suggested_repo_id|
-        unless knn.training_watchers[watcher.id].repositories.include?(suggested_repo_id)
-          watcher.repositories << suggested_repo_id
-          added_repo_count += 1
+      if knn.training_watchers[watcher.id].nil?
+        puts "No data for watcher: #{watcher.id}"
+        repos_by_popularity[0..10].each do |repo_id|
+          watcher.repositories << repo_id
         end
+      else
+        added_repo_count = 0
+        repos_by_popularity.each do |suggested_repo_id|
+          unless knn.training_watchers[watcher.id].repositories.include?(suggested_repo_id)
+            watcher.repositories << suggested_repo_id
+            added_repo_count += 1
+          end
 
-        break if added_repo_count == 10 
+          break if added_repo_count == 10
+        end
       end
     end
 
 #    $LOG.debug "Score (#{watcher.id}): #{NearestNeighbors.accuracy(knn.training_watchers[watcher.id], watcher)} -- #{watcher.to_s}"
     file.puts watcher.to_s
   end
-#end
+end

@@ -7,19 +7,28 @@ class NearestNeighbors
   attr_reader :training_repositories, :training_watchers, :training_regions
 
   # Calculates Euclidian distance between two repositories.
-  def self.euclidian_distance(first, second)
+  def euclidian_distance(first, second)
     return nil if first == second
 
     weights = [1.0, 1.0, 1.0, 1.0, 1.0]
 
     common_watchers = first.watchers & second.watchers
+    return 1000 if common_watchers.nil?
+    
     first_different_watchers = first.watchers - second.watchers
     second_different_watchers = second.watchers - first.watchers
+
+    #first_watched_repos = first.watchers.collect { |w| @training_watchers[w].repositories }
+    #second_watched_repos = second.watchers.collect { |w| @training_watchers[w].repositories }
+    #common_repos = first_watched_repos & second_watched_repos
 
     distance = 0
 
     first_common_watchers_ratio = common_watchers.size / first.watchers.size.to_f
     second_common_watchers_ratio = common_watchers.size / second.watchers.size.to_f
+
+    #first_common_repos_ratio = common_repos.size / first_watched_repos.size.to_f
+    #second_common_repos_ratio = common_repos.size / second_watched_repos.size.to_f
 
     #distance += (weights[0] * first_common_watchers_ratio)
     #distance += (weights[1] * second_common_watchers_ratio)
@@ -30,10 +39,10 @@ class NearestNeighbors
     # Divide by 2 to normalize between [0, 1].
     # Multiply by Pi/2 to get half cycle of cosine function.  We only care about positive values and cosine
     # is only positive between [0, Pi/2].
-    distance = Math.cos(((first_common_watchers_ratio + second_common_watchers_ratio) / 2.0) * (Math::PI / 2.0))
+    distance = Math.cos(((first_common_watchers_ratio + second_common_watchers_ratio) / 2.0) * (Math::PI / 2.0)) #+ Math.cos(((first_common_repos_ratio + second_common_repos_ratio) / 2.0) * (Math::PI / 2.0))
 
         
-    if first.related? second
+    if first.related?(second) || (first.owner == second.owner)
       # Distance is the inverse of the sum of watcher count for both repositories, which has in implicit
       # bias towards the most popular repositories by watcher size.
       distance = (1.0 / [first.watchers.size + second.watchers.size, 1.0].max)
@@ -123,8 +132,11 @@ class NearestNeighbors
           #$LOG.debug { ">>> #{key} => #{distances[key]}" }
 
           distances[key].each do |repo_id|
+            break if w.repositories.size == k
             w.repositories << repo_id
           end
+
+          break if w.repositories.size == k
         end
       end
 
@@ -146,13 +158,13 @@ class NearestNeighbors
 
     # Watchers watching a lot of repositories are not the norm.
     $LOG.info "knn-init: Pruning watchers."
-    #prune_watchers
+    prune_watchers
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
 
     # Build up repository regions.
     $LOG.info "knn-init: Building repository regions."
     @training_regions = {}
-    @watchers_to_regions = {}
+    @watchers_to_regions = {}  
     @training_repositories.each do |repo_id, repo|
       repo_root = Repository.find_root repo
 
@@ -170,6 +182,12 @@ class NearestNeighbors
       end
     end
     $LOG.debug { "knn-init: Total regions: #{@training_regions.size}" }
+
+    @owners_to_repositories = {}
+    @training_repositories.values.each do |repo|
+      @owners_to_repositories[repo.owner] ||= []
+      @owners_to_repositories[repo.owner] << repo
+    end
   end
 
   def evaluate(test_set)
@@ -204,6 +222,23 @@ class NearestNeighbors
         next
       end
 
+      ####################################################################
+      ### Handling repositories owned by owners we're already watching ###
+      ####################################################################
+      training_watcher.repositories.each do |repo_id|
+        repo = @training_repositories[repo_id]
+        also_owned_repositories = @owners_to_repositories[repo.owner]
+
+        also_owned_repositories.each do |also_owned_repo|
+          distance = euclidian_distance(repo, also_owned_repo)
+
+          unless distance.nil?
+            results[watcher.id][distance.to_s] ||= Set.new
+            results[watcher.id][distance.to_s] << also_owned_repo.id
+          end 
+        end
+      end
+
 
       ###################################
       ### Handling repository regions ###
@@ -220,17 +255,19 @@ class NearestNeighbors
       # Calculate the distance between the representative repo for the region (i.e., the root of the hierarchy)
       # to the the most popular and most forked repos in the region.
       test_regions.each do |watched_id, region|
-        popular_distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_popular)  
+        popular_distance = euclidian_distance(@training_repositories[watched_id], region.most_popular)
         unless popular_distance.nil?
           results[watcher.id][popular_distance.to_s] ||= Set.new
           results[watcher.id][popular_distance.to_s] << region.most_popular.id
         end
+        $LOG.debug "Found repo as popular in local search - score: #{popular_distance}" if watcher.repositories.include?(region.most_popular.id)
 
-        forked_distance = NearestNeighbors.euclidian_distance(@training_repositories[watched_id], region.most_forked)
+        forked_distance = euclidian_distance(@training_repositories[watched_id], region.most_forked)
         unless forked_distance.nil?
           results[watcher.id][forked_distance.to_s] ||= Set.new
           results[watcher.id][forked_distance.to_s] << region.most_forked.id
         end
+        $LOG.debug "Found repo as forked in local search - score: #{forked_distance}" if watcher.repositories.include?(region.most_forked.id)
       end
 
       # Calculate the distance between the repository regions we know the test watcher is in, to every other
@@ -249,7 +286,7 @@ class NearestNeighbors
 
         # Collect the user IDs for the 10 most common watchers.
         sorted_similar_watcher_counts = similar_watcher_counts.sort {|x,y| y.last <=> x.last}
-        most_common_watchers = sorted_similar_watcher_counts[0..10].collect {|x| x.first}
+        most_common_watchers = sorted_similar_watcher_counts[0..5].collect {|x| x.first}
       end
 
       related_regions = Set.new
@@ -274,17 +311,25 @@ class NearestNeighbors
           # Skip repositories that we already know the user belongs to.
           next if training_region.most_popular.watchers.include?(watcher.id)
 
-          popular_distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_popular)
+          popular_distance = euclidian_distance(test_region.most_popular, training_region.most_popular)
           unless popular_distance.nil?
             results[watcher.id][popular_distance.to_s] ||= Set.new
             results[watcher.id][popular_distance.to_s] << training_region.most_popular.id
           end
+          if watcher.repositories.include?(training_region.most_popular.id)
+            $LOG.debug "Found repo as popular in global search - score: #{popular_distance}"
+          else
+            if !popular_distance.nil?
+              $LOG.debug "Distance for bad repo: #{popular_distance}"
+            end 
+          end 
 
-          forked_distance = NearestNeighbors.euclidian_distance(test_region.most_popular, training_region.most_forked)
+          forked_distance = euclidian_distance(test_region.most_popular, training_region.most_forked)
           unless forked_distance.nil?
             results[watcher.id][forked_distance.to_s] ||= Set.new
             results[watcher.id][forked_distance.to_s] << training_region.most_forked.id
           end
+          $LOG.debug "Found repo as forked in global search - score: #{forked_distance}" if watcher.repositories.include?(training_region.most_forked.id)
         end
 
         test_region_count += 1

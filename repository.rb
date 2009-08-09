@@ -17,11 +17,11 @@ end
 
 class Repository
 
-  attr_reader :id, :name, :created_at, :watchers, :children, :parent
+  attr_reader :id, :owner, :name, :created_at, :watchers, :children, :parent
 
   def initialize(id, name=nil, created_at=nil)
     @id = id
-    @name = name
+    @owner, @name = name.split('/')
     @created_at = created_at
     @children = []
     @watchers = WatcherSet.new
