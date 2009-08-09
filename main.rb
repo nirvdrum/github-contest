@@ -9,7 +9,6 @@ require 'ext/data_set'
 require 'nearest_neighbors'
 require 'cache'
 
-require 'logger'
 $LOG = Logger.new(STDOUT)
 $LOG.level = Logger::INFO
 $LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
@@ -72,18 +71,34 @@ data_set = DataLoader.load_watchings
 $LOG.info "Training."
 knn = NearestNeighbors.new(data_set)
 
-$LOG.info "Evaluating."
-predictings = DataLoader.load_predictings
-evaluations = knn.evaluate(predictings)
-predictions = NearestNeighbors.predict(evaluations, 10)
+#$LOG.info "Evaluating."
+#predictings = DataLoader.load_predictings
+#evaluations = knn.evaluate(predictings)
+#predictions = NearestNeighbors.predict(evaluations, 10)
+
+repos_by_popularity = []
+sorted_regions = knn.training_regions.values.sort { |x,y| y.most_popular.watchers.size <=> x.most_popular.watchers.size }
+repos_by_popularity = sorted_regions.collect {|x| x.most_popular.id}
 
 $LOG.info "Printing results file."
-File.open('results.txt', 'w') do |file|
-  rails_repo = Repository.new '17'
+#File.open('results.txt', 'w') do |file|
 
   predictions.each do |watcher|
-    watcher.repositories << rails_repo if watcher.repositories.empty?
-    $LOG.debug "Score (#{watcher.id}): #{NearestNeighbors.accuracy(knn.training_watchers[watcher.id], watcher)} -- #{watcher.to_s}"
+    # Add the ten most popular repositories that the user is not already a watcher of to his repo list if
+    # we don't have any predictions.
+    if watcher.repositories.empty?
+      added_repo_count = 0
+      repos_by_popularity.each do |suggested_repo_id|
+        unless knn.training_watchers[watcher.id].repositories.include?(suggested_repo_id)
+          watcher.repositories << suggested_repo_id
+          added_repo_count += 1
+        end
+
+        break if added_repo_count == 10 
+      end
+    end
+
+#    $LOG.debug "Score (#{watcher.id}): #{NearestNeighbors.accuracy(knn.training_watchers[watcher.id], watcher)} -- #{watcher.to_s}"
     file.puts watcher.to_s
   end
-end
+#end

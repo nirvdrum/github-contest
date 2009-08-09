@@ -146,7 +146,7 @@ class NearestNeighbors
 
     # Watchers watching a lot of repositories are not the norm.
     $LOG.info "knn-init: Pruning watchers."
-    prune_watchers
+    #prune_watchers
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
 
     # Build up repository regions.
