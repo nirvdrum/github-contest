@@ -14,7 +14,7 @@ class NeighborRegion
     @repositories = Set.new [repository, root]
 
     memoize :most_popular
-    #memoize :most_forked
+    memoize :most_forked
     #memoize :cut_point_count
   end
 

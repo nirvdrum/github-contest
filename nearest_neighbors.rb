@@ -21,22 +21,22 @@ class NearestNeighbors
     first_common_watchers_ratio = common_watchers.size / first.watchers.size.to_f
     second_common_watchers_ratio = common_watchers.size / second.watchers.size.to_f
 
-    distance += (weights[0] * first_common_watchers_ratio)
-    distance += (weights[1] * second_common_watchers_ratio)
-    distance += (weights[2] * common_watchers.size)
-    distance += (weights[3] * first_different_watchers.size)
-    distance += (weights[4] * second_different_watchers.size)
+    #distance += (weights[0] * first_common_watchers_ratio)
+    #distance += (weights[1] * second_common_watchers_ratio)
+    #distance += (weights[2] * common_watchers.size)
+    #distance += (weights[3] * first_different_watchers.size)
+    #distance += (weights[4] * second_different_watchers.size)
 
     # Divide by 2 to normalize between [0, 1].
     # Multiply by Pi/2 to get half cycle of cosine function.  We only care about positive values and cosine
     # is only positive between [0, Pi/2].
-    #distance += Math.cos(((first_common_watchers_ratio + second_common_watchers_ratio) / 2.0) * (Math::PI / 2.0))
+    distance = Math.cos(((first_common_watchers_ratio + second_common_watchers_ratio) / 2.0) * (Math::PI / 2.0))
 
         
     if first.related? second
       # Distance is the inverse of the sum of watcher count for both repositories, which has in implicit
       # bias towards the most popular repositories by watcher size.
-      #distance += (1.0 / [first.watchers.size + second.watchers.size, 1.0].max)
+      distance = (1.0 / [first.watchers.size + second.watchers.size, 1.0].max)
     end
 
     distance
@@ -114,14 +114,13 @@ class NearestNeighbors
       w = Watcher.new user_id
 
       unless distances.empty?
-        $LOG.debug { "Distances for watcher #{w.id}" }
+        #$LOG.debug { "Distances for watcher #{w.id}" }
 
         # Select the max(k, # scored) best distances.
         sorted_distances = distances.keys.sort {|x, y| x.to_f <=> y.to_f}
-        upper_bound = [k, sorted_distances.size].min
 
-        sorted_distances[0...upper_bound].each do |key|
-          $LOG.debug { ">>> #{key} => #{distances[key]}" }
+        sorted_distances[0...k].each do |key|
+          #$LOG.debug { ">>> #{key} => #{distances[key]}" }
 
           distances[key].each do |repo_id|
             w.repositories << repo_id
@@ -193,6 +192,9 @@ class NearestNeighbors
     $LOG.info "knn-evaluate: Starting evaluations."
     test_watcher_count = 0
     test_instances.values.each do |watcher|
+      test_watcher_count += 1
+      $LOG.info { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) "}
+      
       results[watcher.id] = {}
 
       # See if we have any training instances for the watcher.  If not, we really can't guess anything.
@@ -233,7 +235,35 @@ class NearestNeighbors
 
       # Calculate the distance between the repository regions we know the test watcher is in, to every other
       # region in the training data.
-      related_regions = @training_regions.values #@watchers_to_regions[watcher.id]
+#      related_regions = @training_regions.values #@watchers_to_regions[watcher.id]
+
+      # Take a look at each region the test instance is in.
+      most_common_watchers = []
+      test_regions.values.each do |watched_region|
+        # For each region, find the most common watchers.
+        similar_watcher_counts = {}
+        watched_region.watchers.each do |related_watcher_id|
+          similar_watcher_counts[related_watcher_id] ||= 0
+          similar_watcher_counts[related_watcher_id] += 1
+        end
+
+        # Collect the user IDs for the 10 most common watchers.
+        sorted_similar_watcher_counts = similar_watcher_counts.sort {|x,y| y.last <=> x.last}
+        most_common_watchers = sorted_similar_watcher_counts[0..10].collect {|x| x.first}
+      end
+
+      related_regions = Set.new
+      most_common_watchers.each do |common_watcher_id|
+        next if @training_watchers[common_watcher_id].nil?
+
+        @training_watchers[common_watcher_id].repositories.each do |related_repo_id|
+          related_repo = @training_repositories[related_repo_id]
+          region = @training_regions[Repository.find_root(related_repo).id]
+
+          related_regions << region unless test_regions.include?(region)     
+        end
+      end
+
       test_region_count = 0
       test_regions.values.each do |test_region|
         training_region_count = 0
@@ -259,8 +289,6 @@ class NearestNeighbors
 
         test_region_count += 1
       end
-
-      test_watcher_count += 1
     end
 
     results
