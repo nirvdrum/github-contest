@@ -315,7 +315,7 @@ class NearestNeighbors
 
         thread_list.each do |t|
           distance, repo_id = t.value
-          results[watcher.id][repo_id] = distance
+          results[watcher.id][repo_id] = distance unless distance.nil?
         end
 
         test_region_count += 1
