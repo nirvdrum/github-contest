@@ -189,7 +189,7 @@ class NearestNeighborsTest < Test::Unit::TestCase
 
     expected = [
             {
-                    '1' => {'0.5' => Set.new(['8324'])},
+                    '1' => {'8324' => 0.5},
                     '2' => {}
             },
             {
@@ -226,18 +226,10 @@ class NearestNeighborsTest < Test::Unit::TestCase
     ]
     test_set2 = Ai4r::Data::DataSet.new(:data_items => test2_items)
 
+    w = Watcher.new('1')
     repo = Repository.new '6790'
-    repo.watchers << Watcher.new('1')
-    recommendations = [
-            {
-                    '1' => {},
-                    '2' => {}
-            },
-            {
-                    '1' => {'1.0' => Set.new([repo.id])},
-                    '5' => {}
-            }
-    ]
+    w.associate repo
+    recommendations = [[], [w]]
 
     # Predicted 0 / 3 accurately.
     assert_equal 0.0, NearestNeighbors.score(test_set1, recommendations[0])
@@ -266,8 +258,8 @@ class NearestNeighborsTest < Test::Unit::TestCase
     r3 = Repository.new '6790'
 
     evaluations = {
-            '1' => {'0.2' => Set.new([r2]), '1.0' => Set.new([r3]), '0.7' => Set.new([r1])},
-            '5' => {'0.5' => Set.new([r1])},
+            '1' => {r2 => 0.2, r3 => 1.0, r1 => 0.7},
+            '5' => {r1 => 0.5},
             '2' => {}
     }
 

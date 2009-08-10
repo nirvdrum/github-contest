@@ -17,6 +17,7 @@ $LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
 
 require 'cache'
 Cache.instance_eval { @@cache = Hash.new }
+Cache.instance_eval { @@cache_dir = "#{File.dirname(__FILE__)}/cache"}
 
 Cache.instance_eval do
   def self.clear

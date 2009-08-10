@@ -103,6 +103,8 @@ class NearestNeighbors
     number_correct / total_repositories_to_predict.to_f
   end
 
+  # Chooses the k best predictions to make from all evaluated distances.
+  # Evaluations is a hash of the form {watcher_id => {repo1_id => distance1, repo2_id => distance2}}
   def self.predict(evaluations, k)
     ret = []
 
@@ -113,17 +115,13 @@ class NearestNeighbors
         #$LOG.debug { "Distances for watcher #{w.id}" }
 
         # Select the max(k, # scored) best distances.
-        sorted_distances = distances.keys.sort {|x, y| x.to_f <=> y.to_f}
+        sorted_distances = distances.sort {|x, y| x.last <=> y.last}
 
-        sorted_distances[0...k].each do |key|
+        sorted_distances[0...k].each do |repo_id, distance|
           #$LOG.debug { ">>> #{key} => #{distances[key]}" }
 
-          distances[key].each do |repo_id|
-            break if w.repositories.size == k
-            w.repositories << repo_id
-          end
-
-          break if w.repositories.size == k
+          # TODO (KJM 8/10/09) Only add repo if distance is below some threshold.
+          w.repositories << repo_id
         end
       end
 
@@ -218,11 +216,7 @@ class NearestNeighbors
 
         also_owned_repositories.each do |also_owned_repo|
           distance = euclidian_distance(repo, also_owned_repo)
-
-          unless distance.nil?
-            results[watcher.id][distance.to_s] ||= Set.new
-            results[watcher.id][distance.to_s] << also_owned_repo.id
-          end 
+          results[watcher.id][also_owned_repo.id] = distance unless distance.nil?
         end
       end
 
@@ -260,14 +254,11 @@ class NearestNeighbors
 
       thread_list.each do |t|
         distance, repo_id = t.value
-        $LOG.debug "Found repo in local search - score: #{popular_distance}" if watcher.repositories.include?(repo_id)        
-        unless distance.nil?
-          results[watcher.id][distance.to_s] ||= Set.new
-          results[watcher.id][distance.to_s] << repo_id
-        end
+        results[watcher.id][repo_id] = distance unless distance.nil?
+
+        $LOG.debug { "Found repo in local search - score: #{popular_distance}" if watcher.repositories.include?(repo_id) }
       end
-      thread_list = nil
-      GC.start
+      thread_list.clear
 
 
       # Calculate the distance between the repository regions we know the test watcher is in, to every other
@@ -303,9 +294,10 @@ class NearestNeighbors
 #          thread_list << t2
 
           while thread_list.size > 1
-            thread_list.each_with_index do |t, i|
+            thread_list.each do |t|
               if t.stop?
                 distance, repo_id = t.value
+                results[watcher.id][repo_id] = distance unless distance.nil?
 
                 if watcher.repositories.include?(repo_id)
                   $LOG.debug "Found repo in global search - score: #{distance}"
@@ -313,11 +305,6 @@ class NearestNeighbors
                   if !distance.nil?
                     $LOG.debug "Distance for bad repo: #{distance}"
                   end
-                end
-
-                unless distance.nil?
-                  results[watcher.id][distance.to_s] ||= Set.new
-                  results[watcher.id][distance.to_s] << repo_id
                 end
               end
 
@@ -328,10 +315,7 @@ class NearestNeighbors
 
         thread_list.each do |t|
           distance, repo_id = t.value
-          unless distance.nil?
-            results[watcher.id][distance.to_s] ||= Set.new
-            results[watcher.id][distance.to_s] << repo_id
-          end
+          results[watcher.id][repo_id] = distance
         end
 
         test_region_count += 1
