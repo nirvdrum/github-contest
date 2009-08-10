@@ -353,7 +353,7 @@ class NearestNeighbors
 
       # Collect the user IDs for the 10 most common watchers.
       sorted_similar_watcher_counts = similar_watcher_counts.sort {|x, y| y.last <=> x.last}
-      most_common_watchers = sorted_similar_watcher_counts[0..20].collect {|x| x.first}
+      most_common_watchers = sorted_similar_watcher_counts[0..5].collect {|x| x.first}
     end
 
     # Now go through each of those watchers and add in all the repository regions that they're watching, but

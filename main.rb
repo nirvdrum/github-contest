@@ -20,8 +20,12 @@ data_set = DataLoader.load_watchings
 $LOG.info "Building classifier."
 count = 0
 predictions = {}
-reduced_data_set = data_set.stratify(10).first
-reduced_data_set.cross_validation(10) do |training_set, test_set|
+#reduced_data_set = data_set.stratify(10).first
+data_set.cross_validation(10) do |training_set, test_set|
+
+  test_data = test_set.to_models
+  training_data = training_set.to_models
+
   $LOG.info ">>> Starting fold #{count + 1}."
   $LOG.info ">>> Training."
   classifier = NearestNeighbors.new(training_set)
@@ -33,9 +37,6 @@ reduced_data_set.cross_validation(10) do |training_set, test_set|
 
   predictions[prediction] ||= []
   predictions[prediction] << classifier
-
-  test_data = test_set.to_models
-  training_data = training_set.to_models
 
   no_region_count = 0
   most_popular_count = 0
