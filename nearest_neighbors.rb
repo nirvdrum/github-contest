@@ -302,7 +302,7 @@ class NearestNeighbors
           thread_list << t
 #          thread_list << t2
 
-          while thread_list.size > 10
+          while thread_list.size > 1
             thread_list.each_with_index do |t, i|
               if t.stop?
                 distance, repo_id = t.value

@@ -16,7 +16,8 @@ class RepositoryTest < Test::Unit::TestCase
     r = Repository.new id, name, created_at
 
     assert_equal id, r.id
-    assert_equal name, r.name
+    assert_equal 'user_a', r.owner
+    assert_equal 'yo', r.name
     assert_equal created_at, r.created_at
     assert_nil r.parent
     assert_equal [], r.watchers

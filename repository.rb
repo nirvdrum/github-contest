@@ -21,7 +21,7 @@ class Repository
 
   def initialize(id, name=nil, created_at=nil)
     @id = id
-    @owner, @name = name.split('/')
+    @owner, @name = name.split('/') unless name.nil?
     @created_at = created_at
     @children = []
     @watchers = WatcherSet.new
@@ -67,7 +67,7 @@ class Repository
   end
 
   def to_s
-    ret = "#{id}:#{name},#{created_at}"
+    ret = "#{id}:#{owner}/#{name},#{created_at}"
 
     ret << ",#{parent.id}" unless parent.nil?
 
