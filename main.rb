@@ -45,15 +45,34 @@ reduced_data_set.cross_validation(10) do |training_set, test_set|
   test_data[:watchers].values.each do |test_watcher|
     total_able_to_be_predicted += test_watcher.repositories.size
 
-    test_watcher.repositories.each do |repo_id|
-      unless training_data[:repositories][repo_id].nil?
+    test_watcher.repositories.each do |test_repo_id|
+      unless training_data[:repositories][test_repo_id].nil?
         able_to_predict += 1
 
-        unless classifier.training_regions[repo_id].nil?
-          most_popular_count += 1 if classifier.training_regions[repo_id].most_popular.id == repo_id
-          most_forked_count += 1 if classifier.training_regions[repo_id].most_forked.id == repo_id
+        unless classifier.training_regions[test_repo_id].nil?
+          most_popular_count += 1 if classifier.training_regions[test_repo_id].most_popular.id == test_repo_id
+          most_forked_count += 1 if classifier.training_regions[test_repo_id].most_forked.id == test_repo_id
         end
       end
+    end
+  end
+
+  test_data[:watchers].values.each do |test_watcher|
+    test_watcher.repositories.each do |test_repo_id|
+      next if training_data[:repositories][test_repo_id].nil?
+
+      if training_data[:watchers][test_watcher.id].nil?
+        $LOG.info { "No training data for watcher #{test_watcher.id} -- impossible to predict" }
+        next
+      end
+
+      if evaluations[test_watcher.id][test_repo_id].nil?
+        $LOG.info { "Failed to find #{test_watcher.id}:#{test_repo_id}" }
+      end
+
+      training_data[:watchers][test_watcher.id].repositories.each do |training_repo_id|
+      end
+
     end
   end
 

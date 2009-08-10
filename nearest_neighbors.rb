@@ -284,16 +284,15 @@ class NearestNeighbors
             [distance, training_region.most_popular.id]
           end
 
-#          t2 = Thread.new do
-#            distance = euclidian_distance(test_region.most_popular, training_region.most_forked)
-#
-#            [distance, training_region.most_popular.id.most_popular.id]
-#          end
+          t2 = Thread.new do
+            distance = euclidian_distance(test_region.most_popular, training_region.most_forked)
+            [distance, training_region.most_popular.id]
+          end
 
           thread_list << t
-#          thread_list << t2
+          thread_list << t2
 
-          while thread_list.size > 1
+          while thread_list.size > 5
             thread_list.each do |t|
               if t.stop?
                 distance, repo_id = t.value
@@ -354,7 +353,7 @@ class NearestNeighbors
 
       # Collect the user IDs for the 10 most common watchers.
       sorted_similar_watcher_counts = similar_watcher_counts.sort {|x, y| y.last <=> x.last}
-      most_common_watchers = sorted_similar_watcher_counts[0..10].collect {|x| x.first}
+      most_common_watchers = sorted_similar_watcher_counts[0..20].collect {|x| x.first}
     end
 
     # Now go through each of those watchers and add in all the repository regions that they're watching, but
