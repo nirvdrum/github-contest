@@ -28,7 +28,7 @@ module DataSetUtilities
       watchers[user_id] ||= Watcher.new user_id
 
       unless repo_id.nil?
-        repositories[repo_id] ||= Repository.new repo_id, raw_repositories[repo_id].name, raw_repositories[repo_id].created_at
+        repositories[repo_id] ||= Repository.new repo_id, "#{raw_repositories[repo_id].owner}/#{raw_repositories[repo_id].name}", raw_repositories[repo_id].created_at
         watchers[user_id].associate repositories[repo_id]
       end
     end
