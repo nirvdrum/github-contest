@@ -20,8 +20,9 @@ data_set = DataLoader.load_watchings
 $LOG.info "Building classifier."
 count = 0
 predictions = {}
-#reduced_data_set = data_set.stratify(10).first
-data_set.cross_validation(10) do |training_set, test_set|
+data_set.cross_validation(10) do |training_set, large_test_set|
+
+  reduced_data_set = large_test_set.stratify(10).each do |test_set|
 
   test_data = test_set.to_models
   training_data = training_set.to_models
@@ -81,9 +82,10 @@ data_set.cross_validation(10) do |training_set, test_set|
   $LOG.info ">>> Best possible prediction accuracy: #{(able_to_predict / total_able_to_be_predicted.to_f) * 100}%"
   $LOG.info ">>> Actual repo was most popular: #{(most_popular_count / total_able_to_be_predicted.to_f) * 100}%"
   $LOG.info ">>> Actual repo was most forked: #{(most_forked_count / total_able_to_be_predicted.to_f) * 100}%"
-
   count += 1
-  break if count == 1
+    break
+  end
+  break
 end
 
 

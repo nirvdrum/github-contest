@@ -143,7 +143,7 @@ class NearestNeighbors
 
     # Watchers watching a lot of repositories are not the norm.
     $LOG.info "knn-init: Pruning watchers."
-    prune_watchers
+    #prune_watchers
     $LOG.debug { "knn-init: Pruned training watchers: #{training_watchers.size}" }
 
     # Build up repository regions.
@@ -195,6 +195,7 @@ class NearestNeighbors
     $LOG.info "knn-evaluate: Starting evaluations."
     test_watcher_count = 0
     test_instances.values.each do |watcher|
+     # next unless watcher.id == '83'
       test_watcher_count += 1
       $LOG.info { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) "}
       
