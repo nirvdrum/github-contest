@@ -9,36 +9,43 @@ require 'ext/data_set'
 require 'nearest_neighbors'
 require 'cache'
 
-$LOG = Logger.new(STDOUT)
-$LOG.level = Logger::INFO
-$LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
 
+require 'irb'
 
-$LOG.info "Loading data."
-data_set = DataLoader.load_watchings
+module IRB # :nodoc:
+  def self.start_session(binding)
+    unless @__initialized
+      args = ARGV
+      ARGV.replace(ARGV.dup)
+      IRB.setup(nil)
+      ARGV.replace(args)
+      @__initialized = true
+    end
 
-$LOG.info "Building classifier."
-count = 0
-predictions = {}
-data_set.cross_validation(10) do |training_set, large_test_set|
+    workspace = WorkSpace.new(binding)
 
-  reduced_data_set = large_test_set.stratify(10).each do |test_set|
+    irb = Irb.new(workspace)
 
-  test_data = test_set.to_models
-  training_data = training_set.to_models
+    @CONF[:IRB_RC].call(irb.context) if @CONF[:IRB_RC]
+    @CONF[:MAIN_CONTEXT] = irb.context
 
-  $LOG.info ">>> Starting fold #{count + 1}."
-  $LOG.info ">>> Training."
-  classifier = NearestNeighbors.new(training_set)
+    catch(:IRB_EXIT) do
+      irb.eval_input
+    end
+  end
+end
 
-  $LOG.info ">>> Classifying."
-  evaluations = classifier.evaluate(test_set)
-  prediction = NearestNeighbors.predict(evaluations, 10)
-  all_predictions = NearestNeighbors.predict(evaluations, 1000)
+class Array
+  def sum
+    inject(0.0) { |sum, e| sum + e }
+  end
 
-  predictions[prediction] ||= []
-  predictions[prediction] << classifier
+  def mean
+    sum / length
+  end
+end
 
+def analyze(test_data, training_data, prediction, all_predictions, classifier, evaluations)
   no_region_count = 0
   most_popular_count = 0
   most_forked_count = 0
@@ -62,6 +69,7 @@ data_set.cross_validation(10) do |training_set, large_test_set|
   test_data[:watchers].values.each do |test_watcher|
     test_watcher.repositories.each do |test_repo_id|
       next if training_data[:repositories][test_repo_id].nil?
+      next if evaluations[test_watcher.id].nil?
 
       if training_data[:watchers][test_watcher.id].nil?
         $LOG.info { "No training data for watcher #{test_watcher.id} -- impossible to predict" }
@@ -71,17 +79,69 @@ data_set.cross_validation(10) do |training_set, large_test_set|
       if evaluations[test_watcher.id][test_repo_id].nil?
         $LOG.info { "Failed to find #{test_watcher.id}:#{test_repo_id}" }
       end
-
-      training_data[:watchers][test_watcher.id].repositories.each do |training_repo_id|
-      end
-
     end
   end
 
-  $LOG.info ">>> Results for fold #{count + 1}: #{NearestNeighbors.score(test_set, prediction) * 100}% / #{NearestNeighbors.score(test_set, all_predictions) * 100}%"
+  prediction.each do |p|
+    p.repositories.each do |repo|
+      if !test_data[:watchers][p.id].repositories.include?(repo)
+        $LOG.info "Bad prediction #{p.id}:#{repo} with distance #{evaluations[p.id][repo]}"
+      end
+    end
+  end
+
+  all_predictions.each do |p|
+    p.repositories.each do |repo|
+      if test_data[:watchers][p.id].repositories.include?(repo)
+        $LOG.info "Missing prediction #{p.id}:#{repo} with distance #{evaluations[p.id][repo]}"
+      end
+    end
+  end
+
   $LOG.info ">>> Best possible prediction accuracy: #{(able_to_predict / total_able_to_be_predicted.to_f) * 100}%"
   $LOG.info ">>> Actual repo was most popular: #{(most_popular_count / total_able_to_be_predicted.to_f) * 100}%"
   $LOG.info ">>> Actual repo was most forked: #{(most_forked_count / total_able_to_be_predicted.to_f) * 100}%"
+end
+
+
+
+$LOG = Logger.new(STDOUT)
+$LOG.level = Logger::INFO
+$LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
+
+
+$LOG.info "Loading data."
+data_set = DataLoader.load_watchings
+
+$LOG.info "Building classifier."
+count = 0
+predictions = {}
+data_set.cross_validation(10) do |training_set, large_test_set|
+
+  reduced_data_set = large_test_set.stratify(100).each do |test_set|
+
+  test_data = test_set.to_models
+  training_data = training_set.to_models
+
+  $LOG.info ">>> Starting fold #{count + 1}."
+  $LOG.info ">>> Training."
+  knn = NearestNeighbors.new(training_set)
+
+  $LOG.info ">>> Classifying."
+  test_set = Ai4r::Data::DataSet.new(:data_items => [['11463']])
+  evaluations = knn.evaluate(test_set)
+  prediction = NearestNeighbors.predict(evaluations, 10)
+  all_predictions = NearestNeighbors.predict(evaluations, 10000)
+
+  predictions[prediction] ||= []
+  predictions[prediction] << knn
+
+  analyze(test_data, training_data, prediction, all_predictions, knn, evaluations)
+
+  $LOG.info ">>> Results for fold #{count + 1}: #{NearestNeighbors.score(test_set, prediction) * 100}% / #{NearestNeighbors.score(test_set, all_predictions) * 100}%"
+
+  IRB.start_session(binding) 
+
   count += 1
     break
   end
@@ -90,6 +150,10 @@ end
 
 
 
+
+
+
+#
 #$LOG.info "Training."
 #knn = NearestNeighbors.new(data_set)
 #
@@ -131,3 +195,6 @@ end
 #    file.puts watcher.to_s
 #  end
 #end
+
+
+
