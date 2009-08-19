@@ -3,9 +3,9 @@ require 'neighbor_region'
 
 class NearestNeighbors
 
-  THREAD_POOL_SIZE = 5
+  THREAD_POOL_SIZE = 10
 
-  attr_reader :training_repositories, :training_watchers, :training_regions, :watchers_to_regions
+  attr_reader :training_repositories, :training_watchers, :training_regions, :watchers_to_regions, :owners_to_repositories
 
   @@comparisons = {}
 
@@ -14,13 +14,13 @@ class NearestNeighbors
   end
 
   # Calculates Euclidian distance between two repositories.
-  def euclidian_distance(first, second, common_watcher_weight=1.0, related_weight=0.75, parent_child_weight=0.25, same_owner_weight=0.65)
+  def euclidian_distance(watcher, first, second, common_watcher_weight=1.0, related_weight=0.75, parent_child_weight=0.4, same_owner_weight=0.65)
     return nil if first == second
 
     common_watchers = first.watchers & second.watchers
-    return 1000 if common_watchers.empty?
 
-    common_watchers_repo_diversity = common_watchers.collect {|w| training_watchers[w].repositories.size}.mean
+
+    common_watchers_repo_diversity = common_watchers.empty? ? 1 : common_watchers.collect {|w| training_watchers[w].repositories.size}.mean
     first_common_watchers_ratio = common_watchers.size / first.watchers.size.to_f
     second_common_watchers_ratio = common_watchers.size / second.watchers.size.to_f
 
@@ -33,21 +33,53 @@ class NearestNeighbors
     # Divide by 2 to normalize between [0, 1].
     # Multiply by Pi/2 to get half cycle of cosine function.  We only care about positive values and cosine
     # is only positive between [0, Pi/2].
-    distance = 10000
 
-    lone_repo_weight = (first.parent.nil? && first.children.empty?) || (second.parent.nil? && second.children.empty?) ? 1.3 : 1.0
 
-    if first.parent == second || second.parent == first
-      distance = lone_repo_weight * parent_child_weight * (1.0 - (common_watchers.size.to_f / [first.watchers.size, second.watchers.size].mean) - (common_watchers.size / common_watchers_repo_diversity.to_f))
+
+
+
+    similar_watcher_counts = {}
+    watcher.repositories.each do |watched_region|
+      @training_repositories[watched_region].watchers.each do |related_watcher_id|
+        next unless common_watchers.include?(related_watcher_id)
+
+        similar_watcher_counts[related_watcher_id] ||= 0
+        similar_watcher_counts[related_watcher_id] += 1
+      end
+    end
+
+    # Convert raw counts to ratios.
+    similar_watcher_counts.each do |key, value|
+      similar_watcher_counts[key] = value.to_f / watcher.repositories.size
+    end
+
+
+
+
+          similarly_owned_count = 0
+      watcher.repositories.each do |repo_id|
+        repo = @training_repositories[repo_id]
+	    similarly_owned_count += 1 if repo.owner == first.owner
+      end
+    total_watchers = @owners_to_repositories[first.owner].empty? ? 1 : @owners_to_repositories[first.owner].collect {|repo| repo.watchers.size}.sum
+
+    lone_repo_weight = (first.parent.nil? && first.children.empty?) || (second.parent.nil? && second.children.empty?) ? 2.0 : 1.0
+
+    if first.parent == second
+      distance = lone_repo_weight * parent_child_weight * (1.0 - (common_watchers.size.to_f / [first.watchers.size, second.watchers.size].mean)) * (1.0 - ((similarly_owned_count.to_f + total_watchers) / [@owners_to_repositories[first.owner].size, 1].max)) + similar_watcher_counts.values.mean
     elsif first.related?(second)
       # Distance is the inverse of the sum of watcher count for both repositories, which has in implicit
       # bias towards the most popular repositories by watcher size.
-      distance = lone_repo_weight * related_weight * (1.0 - (common_watchers.size.to_f / [first.watchers.size, second.watchers.size].mean) - (common_watchers.size / common_watchers_repo_diversity.to_f))
+      distance = lone_repo_weight * related_weight * (1.0 - (common_watchers.size.to_f / [first.watchers.size, second.watchers.size].mean) - ((common_watchers.size / common_watchers_repo_diversity.to_f) / [first.watchers.size, second.watchers.size].mean))
     elsif first.owner == second.owner
-      distance = lone_repo_weight * same_owner_weight * (1.0 - (common_watchers.size.to_f / [first.watchers.size, second.watchers.size].mean) - (common_watchers.size / common_watchers_repo_diversity.to_f))
+      distance = lone_repo_weight * same_owner_weight * (1.0 - ([common_watchers.size.to_f / first.watchers.size, common_watchers.size.to_f / second.watchers.size].mean)) * (1.0 - ((similarly_owned_count.to_f + total_watchers) / @owners_to_repositories[first.owner].size)) + similar_watcher_counts.values.mean
     else
-      distance = lone_repo_weight * common_watcher_weight * (1.0 - ([first_common_watchers_ratio, second_common_watchers_ratio].mean) - (common_watchers.size / common_watchers_repo_diversity.to_f))
-    end
+      if common_watchers.empty?
+        distance = 1000
+      else
+        distance = lone_repo_weight * common_watcher_weight * (1.0 - ([first_common_watchers_ratio, second_common_watchers_ratio].mean) - ((common_watchers.size / common_watchers_repo_diversity.to_f) / [first.watchers.size, second.watchers.size].mean))
+      end
+    end 
 
     @@comparisons[second.id] ||= {}
     @@comparisons[second.id][first.id] = distance
@@ -77,7 +109,7 @@ class NearestNeighbors
     number_incorrect = (predicted.repositories - actual.repositories).size
 
     # Rate the accuracy of the predictions, with a bias towards positive results.
-    (number_correct.to_f / actual.repositories.size) - (number_incorrect.to_f / predicted.repositories.size)
+    actual.repositories.empty? ? 1 : (number_correct.to_f / actual.repositories.size)# - (number_incorrect.to_f / predicted.repositories.size)
   end
 
   # Aggregates accuracies of evaluations of each item in the test set, yielding an overall accuracy score.
@@ -133,7 +165,7 @@ class NearestNeighbors
         #$LOG.debug { "Distances for watcher #{w.id}" }
 
         # Select the max(k, # scored) best distances.
-        sorted_distances = distances.sort {|x, y| x.last <=> y.last}
+        sorted_distances = distances.sort {|x, y| x.last.mean <=> y.last.mean}
 
         sorted_distances[0...k].each do |repo_id, distance|
           #$LOG.debug { ">>> #{key} => #{distances[key]}" }
@@ -168,10 +200,10 @@ class NearestNeighbors
     $LOG.info "knn-init: Building repository regions."
     @training_regions = {}
     @watchers_to_regions = {}  
-    @training_repositories.each do |repo_id, repo|
+    @training_repositories.values.each do |repo|
       repo_root = Repository.find_root repo
-
       existing_region = @training_regions[repo_root.id]
+      
       if existing_region.nil?
         @training_regions[repo_root.id] = NeighborRegion.new repo
       else
@@ -225,6 +257,38 @@ class NearestNeighbors
         next
       end
 
+
+      ###################################
+      ### Handling repository regions ###
+      ###################################
+
+      # Calculate the distance between the repository regions we know the test watcher is in, to every other
+      # region in the training data.
+      #related_regions = @training_regions.values
+      #related_regions = @watchers_to_regions[watcher.id]
+
+      test_regions = {}
+      training_watcher.repositories.each do |repo_id|
+        region = find_region @training_repositories[repo_id]
+
+        test_regions[repo_id] = region unless region.nil?
+      end
+
+      related_repositories = find_repositories_containing_fellow_watchers(test_regions)
+      repositories_to_check = Set.new related_repositories
+
+      test_regions.values.each do |region|
+        related_repositories << region.most_popular
+        related_repositories << region.most_forked
+      end
+
+      related_regions = find_regions_containing_fellow_watchers(test_regions)
+      related_regions.each do |region|
+        related_repositories << region.most_popular
+        related_repositories << region.most_forked
+      end
+
+
       ####################################################################
       ### Handling repositories owned by owners we're already watching ###
       ####################################################################
@@ -234,99 +298,17 @@ class NearestNeighbors
 
         also_owned_repositories.each do |also_owned_repo|
           unless also_owned_repo.watchers.include? watcher.id
-            distance = euclidian_distance(repo, also_owned_repo)
-            unless distance.nil?
-              existing_distance = results[watcher.id][also_owned_repo.id]
-              results[watcher.id][also_owned_repo.id] = existing_distance.nil? ? distance : [distance, existing_distance].min
-            end
+            related_repositories << also_owned_repo
           end
         end
       end
 
-
-      ###################################
-      ### Handling repository regions ###
-      ###################################
-
-      # Extract the regions we know the test watcher belongs to.
-      test_regions = {}
-      training_watcher.repositories.each do |repo_id|
-        region = @training_regions[NeighborRegion.new(@training_repositories[repo_id]).id]
-
-        test_regions[repo_id] = region unless region.nil?
-      end
-
-
-      # Calculate the distance between the representative repo for the region (i.e., the root of the hierarchy)
-      # to the the most popular and most forked repos in the region.
-      thread_pool = []
-      test_regions.each do |watched_id, region|
-        unless region.most_popular.watchers.include? watcher.id
-          t = Thread.new(watched_id, region) do |watched_id, region|
-            distance = euclidian_distance(@training_repositories[watched_id], region.most_popular)
-            [distance, region.most_popular.id]
-          end
-
-          thread_pool << t
-        end
-
-        unless region.most_forked.watchers.include? watcher.id
-          t2 = Thread.new(watched_id, region) do |watched_id, region|
-            distance = euclidian_distance(@training_repositories[watched_id], region.most_forked)
-            [distance, region.most_forked.id]
-          end
-
-          thread_pool << t2
-        end
-
-        while thread_pool.size > THREAD_POOL_SIZE
-          thread_pool.each do |t|
-            if t.stop?
-              distance, repo_id = t.value
-              unless distance.nil?
-                existing_distance = results[watcher.id][repo_id]
-                results[watcher.id][repo_id] = existing_distance.nil? ? distance : [distance, existing_distance].min
-              end
-
-              if watcher.repositories.include?(repo_id)
-                $LOG.debug "Found repo in global search - score: #{distance}"
-              else
-                if !distance.nil?
-                  $LOG.debug "Distance for bad repo: #{distance}"
-                end
-              end
-            end
-
-            thread_pool.delete(t)
-          end
-        end
-      end
-
-      thread_pool.each do |t|
-        distance, repo_id = t.value
-        unless distance.nil?
-          existing_distance = results[watcher.id][repo_id]
-          results[watcher.id][repo_id] = existing_distance.nil? ? distance : [distance, existing_distance].min
-        end
-
-        $LOG.debug { "Found repo in local search - score: #{popular_distance}" if watcher.repositories.include?(repo_id) }
-      end
-      thread_pool.clear
-
-
-      # Calculate the distance between the repository regions we know the test watcher is in, to every other
-      # region in the training data.
-      #related_regions = @training_regions.values
-      #related_regions = @watchers_to_regions[watcher.id]
-
-      #related_regions = find_regions_containing_fellow_watchers(test_regions)
-      related_repositories = find_repositories_containing_fellow_watchers(test_regions)
 
       test_region_count = 0
       test_regions.values.each do |test_region|
         thread_pool = []
         training_region_count = 0
-        related_repositories.each do |training_repository_id|
+        repositories_to_check.each do |training_repository_id|
           training_repository = @training_repositories[training_repository_id] 
           $LOG.debug { "Processing watcher (#{test_watcher_count}/#{test_instances.size}) - (#{test_region_count}/#{test_regions.size}):(#{training_region_count}/#{related_repositories.size})"}
           training_region_count += 1
@@ -336,26 +318,25 @@ class NearestNeighbors
 
           unless training_repository.watchers.include?(watcher.id)
             t = Thread.new(test_region, training_repository) do |test_region, training_repository|
-              distance = euclidian_distance(test_region.most_popular, training_repository)
+              distance = euclidian_distance(training_watcher, test_region.most_popular, training_repository)
               [distance, training_repository.id]
             end
-
             thread_pool << t
-          end
 
-#          t2 = Thread.new do
-#            distance = euclidian_distance(test_region.most_forked, training_repository)
-#            [distance, training_repository.id]
-#          end
-#          thread_pool << t2
+            t2 = Thread.new do
+              distance = euclidian_distance(training_watcher, test_region.most_forked, training_repository)
+              [distance, training_repository.id]
+            end
+            thread_pool << t2
+          end
 
           while thread_pool.size > THREAD_POOL_SIZE
             thread_pool.each do |t|
               if t.stop?
                 distance, repo_id = t.value
                 unless distance.nil?
-                  existing_distance = results[watcher.id][repo_id]
-                  results[watcher.id][repo_id] = existing_distance.nil? ? distance : [distance, existing_distance].min
+                  results[watcher.id][repo_id] ||= []
+                  results[watcher.id][repo_id] << distance
                 end
 
                 if watcher.repositories.include?(repo_id)
@@ -375,8 +356,8 @@ class NearestNeighbors
         thread_pool.each do |t|
           distance, repo_id = t.value
           unless distance.nil?
-            existing_distance = results[watcher.id][repo_id]
-            results[watcher.id][repo_id] = existing_distance.nil? ? distance : [distance, existing_distance].min
+            results[watcher.id][repo_id] ||= []
+            results[watcher.id][repo_id] << distance
           end
         end
 
@@ -388,10 +369,6 @@ class NearestNeighbors
   end
 
   private
-
-  def distance_cache_key(first, second)
-    "#{[first.id, second.id].min}_#{[first.id, second.id].max}"
-  end
 
   def prune_watchers
     @training_watchers.each do |user_id, watcher|
@@ -406,17 +383,25 @@ class NearestNeighbors
   def find_regions_containing_fellow_watchers(test_regions)
     # Take a look at each region the test instance is in.
     # For each region, find the most common watchers.
-    similar_watcher_counts = {}
+    @similar_watcher_counts = {}
     test_regions.values.each do |watched_region|
       watched_region.watchers.each do |related_watcher_id|
-        similar_watcher_counts[related_watcher_id] ||= 0
-        similar_watcher_counts[related_watcher_id] += 1
+        @similar_watcher_counts[related_watcher_id] ||= 0
+        @similar_watcher_counts[related_watcher_id] += 1
       end
     end
 
+    # Convert raw counts to ratios.
+    @similar_watcher_counts.each do |key, value|
+      @similar_watcher_counts[key] = value.to_f / test_regions.size
+    end
+
     # Collect the user IDs for the 10 most common watchers.
-    sorted_similar_watcher_counts = similar_watcher_counts.sort {|x, y| y.last <=> x.last}
-    most_common_watchers = sorted_similar_watcher_counts[0...5].collect {|x| x.first}
+    #sorted_similar_watcher_counts = similar_watcher_counts.sort {|x, y| y.last <=> x.last}
+    #most_common_watchers = sorted_similar_watcher_counts[0...5].collect {|x| x.first}
+
+    # Collect the user IDs for any user that appears in 50% or more of the watcher's repository regions.
+    most_common_watchers = @similar_watcher_counts.find_all {|key, value| value >= 0.7}.collect {|key, value| key}
 
     # Now go through each of those watchers and add in all the repository regions that they're watching, but
     # that the current watcher is not watching.
@@ -427,7 +412,7 @@ class NearestNeighbors
       t = Thread.new(common_watcher_id, test_regions) do |watcher_id, test_regions|
         local_related_regions = Set.new
 
-        @watchers_to_regions[common_watcher_id].each do |region|
+        @watchers_to_regions[watcher_id].each do |region|
           local_related_regions << region unless test_regions.include?(region)
         end
 
@@ -442,27 +427,35 @@ class NearestNeighbors
       related_regions.merge t.value
     end
 
-    # Now sort the related regions by number of watchers and grab the 10 top ones.
+    # Now sort the related regions by number of watchers and grab the 100 top ones.
     sorted_related_regions = related_regions.to_a.sort { |x, y| y.watchers.size <=> x.watchers.size }
-    sorted_related_regions[0...10]
+    sorted_related_regions[0...100]
   end
 
   def find_repositories_containing_fellow_watchers(test_regions)
     # Take a look at each region the test instance is in.
     # For each region, find the most common watchers.
-    similar_watcher_counts = {}
+    @similar_watcher_counts = {}
     test_regions.values.each do |watched_region|
       watched_region.watchers.each do |related_watcher_id|
-        similar_watcher_counts[related_watcher_id] ||= 0
-        similar_watcher_counts[related_watcher_id] += 1
+        @similar_watcher_counts[related_watcher_id] ||= 0
+        @similar_watcher_counts[related_watcher_id] += 1
       end
     end
 
-    # Collect the user IDs for the 10 most common watchers.
-    sorted_similar_watcher_counts = similar_watcher_counts.sort {|x, y| y.last <=> x.last}
-    most_common_watchers = sorted_similar_watcher_counts[0...5].collect {|x| x.first}
+    # Convert raw counts to ratios.
+    @similar_watcher_counts.each do |key, value|
+      @similar_watcher_counts[key] = value.to_f / test_regions.size
+    end
 
-    # Now go through each of those watchers and add in all the repository regions that they're watching, but
+    # Collect the user IDs for the 10 most common watchers.
+    #sorted_similar_watcher_counts = similar_watcher_counts.sort {|x, y| y.last <=> x.last}
+    #most_common_watchers = sorted_similar_watcher_counts[0...5].collect {|x| x.first}
+
+    # Collect the user IDs for any user that appears in 50% or more of the watcher's repository regions.
+    most_common_watchers = @similar_watcher_counts.find_all {|key, value| value >= 0.5}.collect {|key, value| key}
+
+    # Now go through each of those watchers and add in all the repositories that they're watching, but
     # that the current watcher is not watching.
     related_repositories = {}
     most_common_watchers.each do |common_watcher_id|
@@ -477,6 +470,11 @@ class NearestNeighbors
     # Now sort the related regions by number of watchers and grab the 10 top ones.
     sorted_related_repositories = related_repositories.to_a.sort { |x, y| y.last <=> x.last }
     sorted_related_repositories[0...100].collect {|x| x.first}
+  end
+
+  def find_region(repo)
+    repo_root = Repository.find_root repo
+    @training_regions[repo_root.id]
   end
 
 end

@@ -41,7 +41,7 @@ class Array
   end
 
   def mean
-    sum / length
+    length == 0 ? 0 : sum / length
   end
 end
 
@@ -76,7 +76,7 @@ def analyze(test_data, training_data, prediction, all_predictions, classifier, e
         next
       end
 
-      if evaluations[test_watcher.id][test_repo_id].nil?
+      if evaluations[test_watcher.id][test_repo_id].nil? && !training_data[:repositories][test_repo_id].nil?
         $LOG.info { "Failed to find #{test_watcher.id}:#{test_repo_id}" }
       end
     end
@@ -85,18 +85,50 @@ def analyze(test_data, training_data, prediction, all_predictions, classifier, e
   prediction.each do |p|
     p.repositories.each do |repo|
       if !test_data[:watchers][p.id].repositories.include?(repo)
-        $LOG.info "Bad prediction #{p.id}:#{repo} with distance #{evaluations[p.id][repo]}"
+        $LOG.info "Bad prediction #{p.id}:#{repo} with distance #{evaluations[p.id][repo].mean}"
+      end
+    end
+
+    unless training_data[:watchers][p.id].nil?
+      test_data[:watchers][p.id].repositories.delete_if {|r| training_data[:repositories][r].nil?}
+      $LOG.info "Accuracy for watcher #{p.id}: #{NearestNeighbors.accuracy(test_data[:watchers][p.id], p) * 100}%"
+    end 
+  end
+
+  all_predictions.each_with_index do |p, i|
+    p.repositories.each do |repo|
+      if test_data[:watchers][p.id].repositories.include?(repo) && !prediction[i].repositories.include?(repo)
+        $LOG.info "Missing prediction #{p.id}:#{repo} with distance #{evaluations[p.id][repo].mean}"
       end
     end
   end
 
-  all_predictions.each do |p|
-    p.repositories.each do |repo|
-      if test_data[:watchers][p.id].repositories.include?(repo)
-        $LOG.info "Missing prediction #{p.id}:#{repo} with distance #{evaluations[p.id][repo]}"
-      end
+  has_parent_count = 0
+  has_children_count = 0
+  same_owner_count = 0
+  total_repo_count = 0
+  test_data[:watchers].values.each do |test_watcher|
+    next if test_watcher.nil?
+
+    test_watcher.repositories.each do |test_repo_id|
+      total_repo_count += 1
+      next if training_data[:repositories][test_repo_id].nil?
+
+      has_parent_count += 1 unless training_data[:repositories][test_repo_id].parent.nil?
+      has_children_count += 1 unless training_data[:repositories][test_repo_id].children.empty?
+
+      unless training_data[:watchers][test_watcher.id].nil?
+        training_data[:watchers][test_watcher.id].repositories.each do |training_repo_id|
+          same_owner_count += 1 if training_data[:repositories][training_repo_id].owner == training_data[:repositories][test_repo_id].owner
+        end
+      end 
+
     end
   end
+
+  $LOG.info "Has parent ratio: #{(has_parent_count / total_repo_count.to_f) * 100}%"
+  $LOG.info "Has children ratio: #{(has_children_count / total_repo_count.to_f) * 100}%"
+  $LOG.info "Same owner ratio: #{(same_owner_count / total_repo_count.to_f) * 100}%"
 
   $LOG.info ">>> Best possible prediction accuracy: #{(able_to_predict / total_able_to_be_predicted.to_f) * 100}%"
   $LOG.info ">>> Actual repo was most popular: #{(most_popular_count / total_able_to_be_predicted.to_f) * 100}%"
@@ -128,7 +160,7 @@ data_set.cross_validation(10) do |training_set, large_test_set|
   knn = NearestNeighbors.new(training_set)
 
   $LOG.info ">>> Classifying."
-  test_set = Ai4r::Data::DataSet.new(:data_items => [['11463']])
+  #test_set = Ai4r::Data::DataSet.new(:data_items => [['83']])
   evaluations = knn.evaluate(test_set)
   prediction = NearestNeighbors.predict(evaluations, 10)
   all_predictions = NearestNeighbors.predict(evaluations, 10000)
