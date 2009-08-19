@@ -276,15 +276,22 @@ class NearestNeighbors
       end
 
       repositories_to_check = Set.new
+      old_size = 0
 
       # Find a set of repositories from fellow watchers that happen to watch a lot of same repositories as the test watcher.
       repositories_to_check.merge find_repositories_containing_fellow_watchers(test_regions)
+
+      $LOG.info "Added repos from fellow watchers for watcher #{watcher.id} -- new size #{repositories_to_check.size} (+ #{repositories_to_check.size - old_size})"
+      old_size = repositories_to_check.size
 
       # Add in the most popular and most forked repositories from each region we know the test watcher is in.
       test_regions.values.each do |region|
         repositories_to_check << region.most_popular.id
         repositories_to_check << region.most_forked.id
       end
+
+      $LOG.info "Added most_popular & most_forked from test_regions for watcher #{watcher.id} -- new size #{repositories_to_check.size} (+ #{repositories_to_check.size - old_size})"
+      old_size = repositories_to_check.size
 
       # Add in the most popular and most forked regions we know the test watcher is in.
       related_regions = find_regions_containing_fellow_watchers(test_regions)
@@ -293,14 +300,29 @@ class NearestNeighbors
         repositories_to_check << region.most_forked.id
       end
 
+      $LOG.info "Added regions from fellow watchers for watcher #{watcher.id} -- new size #{repositories_to_check.size} (+ #{repositories_to_check.size - old_size})"
+      old_size = repositories_to_check.size
+
 
       ####################################################################
       ### Handling repositories owned by owners we're already watching ###
       ####################################################################
+      also_owned_counts = {}
       training_watcher.repositories.each do |repo_id|
         repo = @training_repositories[repo_id]
-        repositories_to_check.merge(@owners_to_repositories[repo.owner].collect {|repo| repo.id})
+
+        also_owned_counts[repo.owner] ||= 0
+        also_owned_counts[repo.owner] += 1
       end
+
+      also_owned_counts.each do |owner, count|
+        if count > 3
+          repositories_to_check.merge(@owners_to_repositories[owner].collect {|r| r.id})
+        end
+      end   
+
+      $LOG.info "Added similarly owned for watcher #{watcher.id} -- new size #{repositories_to_check.size} (+ #{repositories_to_check.size - old_size})"
+      old_size = repositories_to_check.size
 
 
       test_region_count = 0
@@ -452,7 +474,7 @@ class NearestNeighbors
     #most_common_watchers = sorted_similar_watcher_counts[0...5].collect {|x| x.first}
 
     # Collect the user IDs for any user that appears in 50% or more of the watcher's repository regions.
-    most_common_watchers = @similar_watcher_counts.find_all {|key, value| value >= 0.5}.collect {|key, value| key}
+    most_common_watchers = @similar_watcher_counts.find_all {|key, value| value >= 0.7}.collect {|key, value| key}
 
     # Now go through each of those watchers and add in all the repositories that they're watching, but
     # that the current watcher is not watching.
