@@ -81,8 +81,8 @@ class NearestNeighbors
       end
     end 
 
-    @@comparisons[second.id] ||= {}
-    @@comparisons[second.id][first.id] = distance
+ #   @@comparisons[second.id] ||= {}
+ #   @@comparisons[second.id][first.id] = distance
 
     distance
 
@@ -316,7 +316,8 @@ class NearestNeighbors
       end
 
       also_owned_counts.each do |owner, count|
-        if count > 3
+        # If 5% or more of the test watcher's repositories are owned by the same person, look at the owner's other repositories.
+        if (count.to_f / training_watcher.repositories.size) > 0.05
           repositories_to_check.merge(@owners_to_repositories[owner].collect {|r| r.id})
         end
       end   
@@ -338,17 +339,17 @@ class NearestNeighbors
           #next if training_region.most_popular.watchers.include?(watcher.id)
 
           unless training_repository.watchers.include?(watcher.id)
-            t = Thread.new(test_region, training_repository) do |test_region, training_repository|
-              distance = euclidian_distance(training_watcher, test_region.most_popular, training_repository)
-              [distance, training_repository.id]
-            end
-            thread_pool << t
-
-#            t2 = Thread.new do
-#              distance = euclidian_distance(training_watcher, test_region.most_forked, training_repository)
+#            t = Thread.new(test_region, training_repository) do |test_region, training_repository|
+#              distance = euclidian_distance(training_watcher, test_region.most_popular, training_repository)
 #              [distance, training_repository.id]
 #            end
-#            thread_pool << t2
+#            thread_pool << t
+
+            t2 = Thread.new do
+              distance = euclidian_distance(training_watcher, test_region.most_forked, training_repository)
+              [distance, training_repository.id]
+            end
+            thread_pool << t2
           end
 
           while thread_pool.size > THREAD_POOL_SIZE
