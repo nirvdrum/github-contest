@@ -267,6 +267,7 @@ class NearestNeighbors
       #related_regions = @training_regions.values
       #related_regions = @watchers_to_regions[watcher.id]
 
+      # Find each region we know the test watcher is in.
       test_regions = {}
       training_watcher.repositories.each do |repo_id|
         region = find_region @training_repositories[repo_id]
@@ -274,18 +275,22 @@ class NearestNeighbors
         test_regions[repo_id] = region unless region.nil?
       end
 
-      related_repositories = find_repositories_containing_fellow_watchers(test_regions)
-      repositories_to_check = Set.new related_repositories
+      repositories_to_check = Set.new
 
+      # Find a set of repositories from fellow watchers that happen to watch a lot of same repositories as the test watcher.
+      repositories_to_check.merge find_repositories_containing_fellow_watchers(test_regions)
+
+      # Add in the most popular and most forked repositories from each region we know the test watcher is in.
       test_regions.values.each do |region|
-        related_repositories << region.most_popular
-        related_repositories << region.most_forked
+        repositories_to_check << region.most_popular
+        repositories_to_check << region.most_forked
       end
 
+      # Add in the most popular and most forked regions we know the test watcher is in.
       related_regions = find_regions_containing_fellow_watchers(test_regions)
       related_regions.each do |region|
-        related_repositories << region.most_popular
-        related_repositories << region.most_forked
+        repositories_to_check << region.most_popular
+        repositories_to_check << region.most_forked
       end
 
 
@@ -294,13 +299,7 @@ class NearestNeighbors
       ####################################################################
       training_watcher.repositories.each do |repo_id|
         repo = @training_repositories[repo_id]
-        also_owned_repositories = @owners_to_repositories[repo.owner]
-
-        also_owned_repositories.each do |also_owned_repo|
-          unless also_owned_repo.watchers.include? watcher.id
-            related_repositories << also_owned_repo
-          end
-        end
+        repositories_to_check.merge @owners_to_repositories[repo.owner]
       end
 
 
@@ -323,11 +322,11 @@ class NearestNeighbors
             end
             thread_pool << t
 
-            t2 = Thread.new do
-              distance = euclidian_distance(training_watcher, test_region.most_forked, training_repository)
-              [distance, training_repository.id]
-            end
-            thread_pool << t2
+#            t2 = Thread.new do
+#              distance = euclidian_distance(training_watcher, test_region.most_forked, training_repository)
+#              [distance, training_repository.id]
+#            end
+#            thread_pool << t2
           end
 
           while thread_pool.size > THREAD_POOL_SIZE

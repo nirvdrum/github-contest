@@ -172,7 +172,7 @@ data_set.cross_validation(10) do |training_set, large_test_set|
 
   $LOG.info ">>> Results for fold #{count + 1}: #{NearestNeighbors.score(test_set, prediction) * 100}% / #{NearestNeighbors.score(test_set, all_predictions) * 100}%"
 
-  IRB.start_session(binding) 
+  IRB.start_session(binding)
 
   count += 1
     break
