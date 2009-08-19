@@ -282,15 +282,15 @@ class NearestNeighbors
 
       # Add in the most popular and most forked repositories from each region we know the test watcher is in.
       test_regions.values.each do |region|
-        repositories_to_check << region.most_popular
-        repositories_to_check << region.most_forked
+        repositories_to_check << region.most_popular.id
+        repositories_to_check << region.most_forked.id
       end
 
       # Add in the most popular and most forked regions we know the test watcher is in.
       related_regions = find_regions_containing_fellow_watchers(test_regions)
       related_regions.each do |region|
-        repositories_to_check << region.most_popular
-        repositories_to_check << region.most_forked
+        repositories_to_check << region.most_popular.id
+        repositories_to_check << region.most_forked.id
       end
 
 
@@ -299,7 +299,7 @@ class NearestNeighbors
       ####################################################################
       training_watcher.repositories.each do |repo_id|
         repo = @training_repositories[repo_id]
-        repositories_to_check.merge @owners_to_repositories[repo.owner]
+        repositories_to_check.merge(@owners_to_repositories[repo.owner].collect {|repo| repo.id})
       end
 
 
