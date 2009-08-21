@@ -43,6 +43,10 @@ class Array
   def mean
     length == 0 ? 0 : sum / length
   end
+
+  def median
+    sort[length / 2]
+  end
 end
 
 def analyze(test_data, training_data, prediction, all_predictions, classifier, evaluations)
