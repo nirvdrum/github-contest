@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'ai4r'
 require 'enumerator'
+require 'memoize'
 
 require 'data_set_utilities'
 
@@ -8,7 +9,15 @@ module Ai4r
   module Data
     class DataSet
 
+      include Memoize
       include DataSetUtilities
+
+      alias :old_initialize :initialize
+      def initialize(*args)
+        old_initialize *args
+
+        memoize :to_models
+      end
 
       def stratify(num_folds)
         # Although the data will ultimately be sorted by class value, the entries within that class value should be
