@@ -9,3 +9,21 @@ require 'ai4r'
 require 'pp'
 
 require 'ext/data_set'
+
+require 'logger'
+$LOG = Logger.new(STDOUT)
+$LOG.level = Logger::FATAL
+$LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
+
+require 'cache'
+Cache.instance_eval { @@cache = Hash.new }
+Cache.instance_eval { @@cache_dir = "#{File.dirname(__FILE__)}/cache"}
+
+Cache.instance_eval do
+  def self.clear
+    @@cache.clear
+  end
+end
+
+require 'data_loader'
+DataLoader.instance_eval { @@data_dir = "#{File.dirname(__FILE__)}/data" }

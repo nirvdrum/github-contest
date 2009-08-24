@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class DataSetTest < Test::Unit::TestCase
+class DataSetTest < Test::Unit::TestCase 
 
   def test_to_test_set
 
@@ -59,6 +59,7 @@ class DataSetTest < Test::Unit::TestCase
     ]
 
     data_set = Ai4r::Data::DataSet.new(:data_items => data_items)
+    data_set.stubs(:rand).returns(0) # Random data in tests is hard to test for.
     folds = data_set.stratify(3)
 
     assert_equal expected_first_fold_data_items, folds[0].data_items

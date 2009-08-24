@@ -1,33 +1,55 @@
-# Manages bi-directional relationships between Repository and Watcher instances.  Also ensures
-# set semantics of watcher list.
+# Ensures set semantics of watcher list and handles coercion between strings and repositories.
 class WatcherSet < Array
-  attr_accessor :repo
-
   def <<(watcher)
-    unless include?(watcher)
-      super watcher
+    id = watcher.is_a?(Watcher) ? watcher.id : watcher
 
-      watcher.repositories << repo
-    end
+    super id unless include?(id)
+  end
+
+  def delete(watcher)
+    watcher.is_a?(Watcher) ? super(watcher.id) : watcher
+  end
+
+  def ==(other)
+    self.size == other.size && (self - other).empty?
   end
 end
 
 class Repository
 
-  attr_reader :id, :name, :created_at, :watchers, :children, :parent
+  attr_reader :id, :owner, :name, :created_at, :watchers, :children, :parent
 
-  def initialize(id, name, created_at)
+  def initialize(id, name=nil, created_at=nil)
     @id = id
-    @name = name
+    @owner, @name = name.split('/') unless name.nil?
     @created_at = created_at
     @children = []
     @watchers = WatcherSet.new
-    @watchers.repo = self
   end
 
   def parent=(parent)
     @parent = parent
     parent.children << self unless parent.nil?
+  end
+
+  def related?(other)
+    root = Repository.find_root(self)
+
+    queue = [root]
+
+    while !queue.empty?
+      repo = queue.pop
+      return true if repo == other
+
+      queue += repo.children
+    end
+
+    false
+  end
+
+  def associate(watcher)
+    @watchers << watcher
+    watcher.repositories << self
   end
 
   def ==(other)
@@ -38,9 +60,14 @@ class Repository
     @parent == other.parent &&
     @watchers == other.watchers    
   end
+  alias_method :eql?, :==
+
+  def hash
+    @id.hash
+  end
 
   def to_s
-    ret = "#{id}:#{name},#{created_at}"
+    ret = "#{id}:#{owner}/#{name},#{created_at}"
 
     ret << ",#{parent.id}" unless parent.nil?
 
@@ -87,10 +114,8 @@ class Repository
     ret
   end
 
-  private
-
   def self.find_root(repository)
     repository.parent.nil? ? repository : find_root(repository.parent)
-  end
+  end 
 
 end

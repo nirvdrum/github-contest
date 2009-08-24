@@ -13,7 +13,7 @@ class DataExporterTest < Test::Unit::TestCase
 
     data_set = Ai4r::Data::DataSet.new(:data_labels => data_labels, :data_items => data_items)
 
-    expected = IO.readlines('data/exported.txt').join('')
+    expected = IO.readlines("#{File.dirname(__FILE__)}/data/exported.txt").join('')
     assert_equal expected, DataExporter.export_data_set(data_set)
   end
 

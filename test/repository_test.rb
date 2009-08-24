@@ -16,7 +16,8 @@ class RepositoryTest < Test::Unit::TestCase
     r = Repository.new id, name, created_at
 
     assert_equal id, r.id
-    assert_equal name, r.name
+    assert_equal 'user_a', r.owner
+    assert_equal 'yo', r.name
     assert_equal created_at, r.created_at
     assert_nil r.parent
     assert_equal [], r.watchers
@@ -48,8 +49,31 @@ class RepositoryTest < Test::Unit::TestCase
     # Two repositories with different watchers should not be equal.
     a.parent = b.parent
     assert a == b
-    a.watchers << '1'
+    a.watchers << Watcher.new('1')
     assert a != b
+  end
+
+  def test_eql
+    a = Repository.new '1234', 'user_a/yo', '2009-02-26'
+    b = Repository.new '1234', 'user_a/yo', '2009-02-26'
+
+    # Two repositories with the same name, creation time, and parent should be equal.
+    assert a.eql?(b)
+    assert a.hash == b.hash
+
+    # Two repositories with different parents should not be equal.
+    a.parent = b
+    assert !a.eql?(b)
+    assert a.hash == b.hash # Hash on ID.
+
+    # Two repositories with different watchers should not be equal.
+    a.parent = b.parent
+    assert a.eql?(b)
+    assert a.hash == b.hash
+
+    a.watchers << Watcher.new('1')
+    assert !a.eql?(b)
+    assert a.hash == b.hash # Hash on ID.
   end
 
   def test_watchers
@@ -62,15 +86,11 @@ class RepositoryTest < Test::Unit::TestCase
     @repo.watchers << two
 
     # Make sure the watchers list was populated correctly.
-    assert_equal [one, two], @repo.watchers
+    assert_equal [one.id, two.id], @repo.watchers
 
     # Make sure a watcher can only appear once.
     @repo.watchers << one
-    assert_equal [one, two], @repo.watchers
-
-    # Make sure the bi-directional relationship was established.
-    assert_equal [@repo], one.repositories
-    assert_equal [@repo], two.repositories
+    assert_equal [one.id, two.id], @repo.watchers
   end
 
   def test_popular_family_member_by_watchers_single_repo
@@ -88,14 +108,17 @@ class RepositoryTest < Test::Unit::TestCase
     grandchild_a.parent = child
     grandchild_b.parent = child
 
-    parent.watchers << '2'
-    parent.watchers << '6'
+    w1 = Watcher.new('2')
+    w2 = Watcher.new('6')
 
-    grandchild_a.watchers << '7'
+    parent.watchers << w1
+    parent.watchers << w2
 
-    grandchild_b.watchers << '8'
-    grandchild_b.watchers << '2'
-    grandchild_b.watchers << '6'
+    grandchild_a.watchers << Watcher.new('7')
+
+    grandchild_b.watchers << Watcher.new('8')
+    grandchild_b.watchers << w1
+    grandchild_b.watchers << w2
 
     [parent, child, grandchild_a, grandchild_b].each do |repo|
       assert_equal grandchild_b, Repository.popular_family_member_by_watchers(repo)
@@ -122,6 +145,30 @@ class RepositoryTest < Test::Unit::TestCase
     end
   end
 
+  def test_related
+    parent = Repository.new '12341', 'user_a/yo', '2009-02-26'
+    child = Repository.new '2345', 'user_b/yo', '2009-03-16'
+    grandchild_a = Repository.new '6790', 'user_c/yo', '2009-05-08'
+    grandchild_b = Repository.new '2368', 'user_c/yo', '2009-05-09'
+
+    # Establish family bond.
+    child.parent = parent
+    grandchild_a.parent = child
+    grandchild_b.parent = child
+
+    repositories = [parent]
+    non_related = Repository.new '367734', 'user_q/not_related', '2009-07-02'
+
+    repositories.each do |first|
+      # Make sure all the various players in the family tree are related.
+      repositories.each do |second|
+        assert first.related?(second)
+      end
+
+      assert !first.related?(non_related)
+    end
+  end
+  
   def test_to_s
     assert_equal '1234:user_a/yo,2009-02-26', @repo.to_s
 
@@ -130,4 +177,15 @@ class RepositoryTest < Test::Unit::TestCase
 
     assert_equal '2356:user_b/yo,2009-03-21,1234', with_parent.to_s
   end
+
+  def test_associate
+    watcher = Watcher.new '1'
+    repo = Repository.new '1234'
+
+    repo.associate watcher
+
+    # Check that bi-directional mappings are set up.
+    assert_equal [watcher.id], repo.watchers
+    assert_equal [repo.id], watcher.repositories
+  end  
 end
