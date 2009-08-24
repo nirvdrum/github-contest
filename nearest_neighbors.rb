@@ -355,6 +355,7 @@ class NearestNeighbors
     related_regions = {}
 
     # Look at each watcher in each of the test watcher's regions and find the other regions each of those watchers is in.
+    thread_pool = []
     test_regions.each do |watched_region|
       watched_region.watchers.each do |related_watcher_id|
         related_watcher = @training_watchers[related_watcher_id]
@@ -364,11 +365,31 @@ class NearestNeighbors
           related_region = find_region related_repo
 
           unless related_region.watchers.include?(test_watcher.id)
-            related_regions[related_region.id] ||= 0
-            related_regions[related_region.id] = [related_regions[related_region.id], watched_region.cut_point_count(related_region)].max
+            t = Thread.new(related_region, watched_region) do |related_region, watched_region|
+              [related_region.id, watched_region.cut_point_count(related_region)]
+            end
+            thread_pool << t
+          end
+
+          while thread_pool.size > THREAD_POOL_SIZE
+            thread_pool.each do |t|
+              if t.stop?
+                related_region_id, distance = t.value
+                related_regions[related_region_id] ||= 0
+                related_regions[related_region_id] = [related_regions[related_region_id], distance].max
+              end
+
+              thread_pool.delete(t)
+            end
           end
         end
       end
+    end
+
+    thread_pool.each do |t|
+      related_region_id, distance = t.value
+      related_regions[related_region_id] ||= 0
+      related_regions[related_region_id] = [related_regions[related_region_id], distance].max
     end
 
     sorted_related_region_counts = related_regions.sort {|x, y| y.last <=> x.last}
