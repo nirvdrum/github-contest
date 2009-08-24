@@ -231,6 +231,16 @@ class NearestNeighbors
       repositories_to_check = Set.new
       old_size = 0
 
+      related_regions = find_regions_with_most_cutpoints(watcher, test_regions)
+      related_regions.each do |region_id|
+        region = @training_regions[region_id]
+        #repositories_to_check << region.most_popular.id
+        #repositories_to_check << region.most_forked.id
+        results[watcher.id][region.most_popular.id] ||= []
+        results[watcher.id][region.most_popular.id] << 0
+      end
+
+=begin
       # Find a set of repositories from fellow watchers that happen to watch a lot of same repositories as the test watcher.
       repositories_to_check.merge find_repositories_containing_fellow_watchers(test_regions)
 
@@ -277,10 +287,14 @@ class NearestNeighbors
 
       $LOG.info "Added similarly owned for watcher #{watcher.id} -- new size #{repositories_to_check.size} (+ #{repositories_to_check.size - old_size})"
       old_size = repositories_to_check.size
+=end
 
 
+
+
+=begin
       test_region_count = 0
-      test_regions.values.each do |test_region|
+      test_regions.each do |test_region|
         thread_pool = []
         training_region_count = 0
         repositories_to_check.each do |training_repository_id|
@@ -327,12 +341,39 @@ class NearestNeighbors
 
         test_region_count += 1
       end
+=end
+
     end
 
     results
   end
 
+
   private
+
+  def find_regions_with_most_cutpoints(test_watcher, test_regions)
+    related_regions = {}
+
+    # Look at each watcher in each of the test watcher's regions and find the other regions each of those watchers is in.
+    test_regions.each do |watched_region|
+      watched_region.watchers.each do |related_watcher_id|
+        related_watcher = @training_watchers[related_watcher_id]
+
+        related_watcher.repositories.each do |related_repo_id|
+          related_repo = @training_repositories[related_repo_id]
+          related_region = find_region related_repo
+
+          unless related_region.watchers.include?(test_watcher.id)
+            related_regions[related_region.id] ||= 0
+            related_regions[related_region.id] = [related_regions[related_region.id], watched_region.cut_point_count(related_region)].max
+          end
+        end
+      end
+    end
+
+    sorted_related_region_counts = related_regions.sort {|x, y| y.last <=> x.last}
+    sorted_related_region_counts[0...TOP_COMMON_REPOS].collect {|x| x.first}
+  end
 
   def find_regions_containing_fellow_watchers(test_regions)
     # Take a look at each region the test instance is in.

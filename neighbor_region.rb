@@ -15,7 +15,7 @@ class NeighborRegion
 
     memoize :most_popular
     memoize :most_forked
-    #memoize :cut_point_count
+    memoize :watchers
   end
 
   def watchers
